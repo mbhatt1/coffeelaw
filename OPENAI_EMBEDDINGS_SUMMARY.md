@@ -70,9 +70,14 @@ b ≈ -2 × slope_W
 - Therefore: b = -2 × (-1/3) = 2/3 (confirms Law 2)
 
 #### 2. Universal -1/3 Exponent
-- Appears in Laws 1 and 3
+- Appears in Law 1 (cube-root sharpening)
 - Represents fundamental scaling in high-dimensional spaces
 - Related to cube-root volume scaling
+
+#### 3. Logarithmic Scaling
+- Appears in Laws 2 and 3
+- Law 2: Entropy scales with ln(Pe_ctx)
+- Law 3: Pe_ctx scales with ln(N)
 
 #### 3. Inverse W-H Relationship
 - As Pe_ctx ↑: W ↓ (less ambiguous) and H ↑ (more diverse)

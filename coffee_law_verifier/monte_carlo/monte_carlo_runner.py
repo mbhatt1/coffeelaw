@@ -164,7 +164,9 @@ class MonteCarloRunner:
                                    n_chunk_values: int = 10,
                                    samples_per_n: int = 50) -> MonteCarloResults:
         """
-        Run Protocol 3: Verify α(N) ∼ N^(-1/3)
+        Run Protocol 3: Verify Pe_ctx(N) = a + b·ln(N)
+        
+        This measures how context quality scales logarithmically with the number of chunks.
         """
         self.logger.info(f"Starting diminishing returns protocol")
         
@@ -360,8 +362,8 @@ Please provide your answer based on the context above."""
     def _estimate_coupling(self, metrics: Any) -> float:
         """Estimate coupling parameter α(N) from metrics
         
-        α represents how much performance improves with more chunks.
-        Should follow α(N) ∼ N^(-1/3) according to Coffee Law.
+        Pe_ctx represents context quality.
+        Should follow Pe_ctx(N) = a + b·ln(N) according to Coffee Law 3.
         
         We estimate α as W_normalized / N_eff^(1/3)
         """

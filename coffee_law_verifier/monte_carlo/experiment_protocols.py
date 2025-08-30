@@ -68,9 +68,9 @@ class ExperimentProtocols:
                 }
             ),
             'diminishing_returns': ProtocolConfig(
-                name='Diminishing returns with context size',
-                description='Verify α(N) ∼ N^(-1/3)',
-                pe_ctx_range=(1.0, 1.0),  # Fixed Pe for this test
+                name='Logarithmic context scaling',
+                description='Verify Pe_ctx(N) = a + b·ln(N)',
+                pe_ctx_range=(1.0, 1.0),  # Not used for this test
                 n_pe_variants=10,  # Actually N values
                 samples_per_variant=50,
                 required_metrics=['H', 'W', 'N_eff'],
@@ -101,9 +101,9 @@ class ExperimentProtocols:
         self.logger.info("Running Protocol 2: Entropy slope")
         results['entropy'] = await self.run_protocol_2_entropy()
         
-        # Protocol 3: Diminishing returns
-        self.logger.info("Running Protocol 3: Diminishing returns")
-        results['diminishing_returns'] = await self.run_protocol_3_diminishing_returns()
+        # Protocol 3: Logarithmic context scaling
+        self.logger.info("Running Protocol 3: Logarithmic context scaling")
+        results['diminishing_returns'] = await self.run_protocol_3_logarithmic_scaling()
         
         # Overall verification
         overall_passed = all(r.verification_passed for r in results.values())

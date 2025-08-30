@@ -25,8 +25,9 @@ class PowerLawAnalyzer:
     Fit and verify power law relationships for Coffee Law
     
     Key relationships to verify:
-    1. W/√D_eff ∝ Pe_ctx^(-1/3)
-    2. α(N) ∝ N^(-1/3)
+    1. W/√D_eff ∝ Pe_ctx^(-1/3) (Law 1)
+    2. H = H₀ + (2/3)ln(Pe_ctx) (Law 2)
+    3. Pe_ctx(N) = a + b·ln(N) (Law 3)
     """
     
     def __init__(self, confidence_level: float = 0.95):

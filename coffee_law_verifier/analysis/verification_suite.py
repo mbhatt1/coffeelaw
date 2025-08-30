@@ -38,10 +38,10 @@ class VerificationSuite:
     """
     Complete verification suite for Coffee Law relationships
     
-    Implements all three protocols from README:
-    1. Sharpening: W/√D_eff ∝ Pe_ctx^(-1/3)
-    2. Entropy: H = a + b*ln(Pe_ctx) with b ≈ 2/3
-    3. Diminishing returns: α(N) ∼ N^(-1/3)
+    Implements all three protocols from the Coffee Laws:
+    1. Law 1 - Cube-root Sharpening: W/√D_eff = α · Pe_ctx^(-1/3)
+    2. Law 2 - Entropy Scaling: H = H₀ + (2/3)ln(Pe_ctx)
+    3. Law 3 - Logarithmic Context Scaling: Pe_ctx(N) = a + b·ln(N)
     """
     
     def __init__(self):
@@ -256,8 +256,8 @@ class VerificationSuite:
             # Handle old format (power law)
             elif 'within_tolerance' in diminishing and not diminishing['within_tolerance']:
                 recommendations.append(
-                    "Diminishing returns not following N^(-1/3). "
-                    "Check chunk selection algorithm and N_eff calculation"
+                    "Context scaling not following logarithmic pattern Pe_ctx(N) = a + b·ln(N). "
+                    "Check chunk selection algorithm and Pe_ctx calculation"
                 )
         
         # R-squared warnings
@@ -327,7 +327,7 @@ class VerificationSuite:
             elif 'measured_exponent' in dim:
                 report.append("Protocol 3: Diminishing Returns")
                 report.append("-" * 40)
-                report.append(f"Expected: α(N) ∼ N^(-1/3)")
+                report.append(f"Expected: Pe_ctx(N) = a + b·ln(N)")
                 report.append(f"Measured exponent: {dim['measured_exponent']:.4f}")
                 report.append(f"Status: {'✓ PASS' if result.diminishing_returns_passed else '✗ FAIL'}")
                 report.append(f"R²: {dim.get('r_squared', 0):.4f}")

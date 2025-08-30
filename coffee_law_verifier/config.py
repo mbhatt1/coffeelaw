@@ -30,13 +30,13 @@ class VerifierConfig:
     samples_per_variant: int = 100  # Samples per Pe_ctx variant
     n_embedding_samples: int = 16  # Samples for ambiguity width measurement
     
-    # Statistical thresholds (from README)
-    w_slope_expected: float = -1/3
+    # Statistical thresholds (from Coffee Laws paper)
+    w_slope_expected: float = -1/3  # Law 1: W/√D_eff ∝ Pe_ctx^(-1/3)
     w_slope_tolerance: float = 0.07
-    entropy_slope_expected: float = 2/3
+    entropy_slope_expected: float = 2/3  # Law 2: H = H₀ + (2/3)ln(Pe_ctx)
     entropy_slope_tolerance: float = 0.10
-    alpha_slope_expected: float = -1/3
-    alpha_slope_tolerance: float = 0.10
+    # Law 3: Pe_ctx(N) = a + b·ln(N) - logarithmic fit
+    log_scaling_r2_threshold: float = 0.9  # R² threshold for logarithmic fit
     
     # Context engineering parameters
     min_temperature: float = 0.1
