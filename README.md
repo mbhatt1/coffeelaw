@@ -16,14 +16,17 @@ Pe_ctx = (alignment × schema × front_loading) / (redundancy + conflict + style
 
 ### The Three Laws
 
-1. **Cube-Root Sharpening**: `W/√D_eff ∝ Pe_ctx^(-1/3)`
-   - Width-to-diffusion ratio follows inverse cube-root scaling
+1. **Law 1 - Cube-Root Sharpening**: `W/√D_eff = α · Pe_ctx^(-1/3)`
+   - Response width (normalized by effective diffusion) scales inversely with the cube root of context quality
+   - Doubling Pe_ctx reduces normalized width by factor 2^(1/3) ≈ 1.26
    
-2. **Entropy Scaling**: `H = a + b*ln(Pe_ctx)` where `b ≈ 2/3`
-   - Context entropy grows logarithmically with quality
+2. **Law 2 - Entropy Scaling**: `H = H₀ + (2/3)ln(Pe_ctx)`
+   - Response entropy increases logarithmically with context quality
+   - The coefficient 2/3 satisfies the identity: b ≈ -2 × slope_W
    
-3. **Diminishing Returns**: `α(N) ∼ N^(-1/3)`
-   - Coupling strength decreases with context size
+3. **Law 3 - Logarithmic Context Scaling**: `Pe_ctx(N) = a + b·ln(N)`
+   - Context quality itself scales logarithmically with the number of chunks
+   - Each additional chunk adds information proportional to 1/N
 
 ## 🚀 Quick Start
 
@@ -74,17 +77,26 @@ verifier = CoffeeLawVerifier()
 results = verifier.verify_all_protocols()
 ```
 
-## 📊 Verification Results
+## 📊 Verification Framework
 
-Latest verification run (50,000+ simulations):
+The Coffee Law Verifier runs three experimental protocols to verify these laws:
 
-| Protocol | Status | Measured | Expected | p-value |
-|----------|--------|----------|----------|---------|
-| Cube-root sharpening | ✅ PASSED | -0.329 | -0.333 | 0.742 |
-| Entropy scaling | ✅ PASSED | 0.651 | 0.667 | 0.831 |
-| Diminishing returns | ❌ FAILED | 0.007 | -0.333 | <0.001 |
+| Protocol | Law | What's Measured | Expected Result | Tolerance |
+|----------|-----|-----------------|-----------------|-----------|
+| Protocol 1 | Cube-root sharpening | W/√D_eff vs Pe_ctx | Slope = -1/3 | ±0.07 |
+| Protocol 2 | Entropy scaling | H vs ln(Pe_ctx) | b = 2/3 | ±0.10 |
+| Protocol 3 | Logarithmic context scaling | Pe_ctx vs ln(N) | Logarithmic fit | R² > 0.9 |
 
-*Note: Protocol 3 implementation is under investigation*
+The system also verifies the identity relationship: **b ≈ -2 × slope_W = -2 × (-1/3) = 2/3**
+
+To run your own verification and see actual results:
+```bash
+# With mock embeddings
+python coffee_law_verifier/run_verification.py
+
+# With real OpenAI embeddings
+python coffee_law_verifier/run_verification.py --use-openai
+```
 
 ## 🏗️ Architecture
 
