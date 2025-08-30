@@ -6,9 +6,14 @@ A production-grade Monte Carlo simulation framework for verifying the Coffee Law
 
 This framework implements comprehensive verification of the three key Coffee Law claims:
 
-1. **Cube-root Sharpening Law**: W/√D_eff ∝ Pe_ctx^(-1/3)
-2. **Entropy Scaling**: H = a + b*ln(Pe_ctx) with b ≈ 2/3
-3. **Diminishing Returns**: α(N) ∼ N^(-1/3)
+1. **Law 1 - Cube-root Sharpening**: W/√D_eff = α · Pe_ctx^(-1/3)
+   - Response width (normalized by effective diffusion) scales inversely with the cube root of context quality
+   
+2. **Law 2 - Entropy Scaling**: H = H₀ + (2/3)ln(Pe_ctx)
+   - Response entropy increases logarithmically with context quality at rate 2/3
+   
+3. **Law 3 - Logarithmic Context Scaling**: Pe_ctx(N) = a + b·ln(N)
+   - Context quality itself scales logarithmically with the number of chunks N
 
 ## Quick Start
 
@@ -120,13 +125,13 @@ Formula: `Pe_ctx ≈ (alignment × schema × front-loading) / (redundancy + conf
 
 - Measures H vs ln(Pe_ctx)
 - Verifies slope b ≈ 2/3 ± 0.10
-- Checks identity: b ≈ -2 × slope_W
+- Checks identity: b ≈ -2 × slope_W = -2 × (-1/3) = 2/3
 
-### Protocol 3: Diminishing Returns
+### Protocol 3: Logarithmic Context Scaling
 
 - Varies number of chunks N
-- Measures coupling α(N)
-- Verifies slope -1/3 ± 0.10
+- Measures Pe_ctx for each N
+- Verifies logarithmic relationship Pe_ctx(N) = a + b·ln(N)
 
 ## Configuration
 
