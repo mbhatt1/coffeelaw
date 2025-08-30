@@ -103,7 +103,7 @@ class ExperimentProtocols:
         
         # Protocol 3: Logarithmic context scaling
         self.logger.info("Running Protocol 3: Logarithmic context scaling")
-        results['diminishing_returns'] = await self.run_protocol_3_logarithmic_scaling()
+        results['diminishing_returns'] = await self.run_protocol_3_diminishing_returns()
         
         # Overall verification
         overall_passed = all(r.verification_passed for r in results.values())
