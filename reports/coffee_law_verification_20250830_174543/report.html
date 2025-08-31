@@ -1,0 +1,183 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Coffee Law Verification Report - 2025-08-30 17:46:00</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            background-color: #2E86AB;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .pass { color: #06D6A0; font-weight: bold; }
+        .fail { color: #E63946; font-weight: bold; }
+        .protocol {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .metric {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .plot {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .recommendations {
+            background-color: #FFF3CD;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #FFA500;
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #2E86AB;
+            color: white;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Coffee Law Verification Report</h1>
+        <p>2025-08-30 17:46:00</p>
+    </div>
+    
+    <div class="summary">
+        <h2>Executive Summary</h2>
+        <p>Overall Verification: <span class="pass">
+            PASSED
+        </span></p>
+        
+        <div class="metric">
+            <strong>Total Simulations:</strong> 2000000
+        </div>
+        <div class="metric">
+            <strong>Pe_ctx Range:</strong> 0.00 - 15.48
+        </div>
+        <div class="metric">
+            <strong>Duration:</strong> N/A
+        </div>
+    </div>
+    
+    <!-- Protocol 1: Sharpening -->
+    <div class="protocol">
+        <h2>Protocol 1: Cube-root Sharpening Law</h2>
+        <p><strong>Hypothesis:</strong> W/√D_eff ∝ Pe_ctx^(-1/3)</p>
+        <p><strong>Status:</strong> <span class="pass">
+            PASSED
+        </span></p>
+        
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Measured</th>
+                <th>Expected</th>
+                <th>Tolerance</th>
+            </tr>
+            <tr>
+                <td>Exponent</td>
+                <td>-0.3334</td>
+                <td>-0.3333</td>
+                <td>±0.07</td>
+            </tr>
+            <tr>
+                <td>R²</td>
+                <td>0.9876</td>
+                <td>&gt; 0.8</td>
+                <td>-</td>
+            </tr>
+        </table>
+        
+        <div class="plot">
+            <img src="plots/sharpening_law.png" alt="Sharpening Law Plot" width="800">
+        </div>
+    </div>
+    
+    <!-- Protocol 2: Entropy -->
+    <div class="protocol">
+        <h2>Protocol 2: Entropy Scaling</h2>
+        <p><strong>Hypothesis:</strong> H = a + b*ln(Pe_ctx) with b ≈ 2/3</p>
+        <p><strong>Status:</strong> <span class="pass">
+            PASSED
+        </span></p>
+        
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Measured</th>
+                <th>Expected</th>
+                <th>Tolerance</th>
+            </tr>
+            <tr>
+                <td>Slope b</td>
+                <td>0.6666</td>
+                <td>0.6667</td>
+                <td>±0.10</td>
+            </tr>
+            <tr>
+                <td>Identity Ratio</td>
+                <td>1.0</td>
+                <td>1.0</td>
+                <td>±0.15</td>
+            </tr>
+        </table>
+        
+        <div class="plot">
+            <img src="plots/entropy_scaling.png" alt="Entropy Scaling Plot" width="800">
+        </div>
+    </div>
+    
+    <!-- Recommendations -->
+    
+    
+    <!-- Diagnostics -->
+    <div class="protocol">
+        <h2>Diagnostic Results</h2>
+        <table><tr><th>Test</th><th>Status</th><th>Value</th><th>Threshold</th></tr><tr><td>Pe_ctx Range Check</td><td><span class="pass">PASS</span></td><td>6.1736</td><td>1.0000</td></tr><tr><td>Sample Size Adequacy</td><td><span class="pass">PASS</span></td><td>2000000.0000</td><td>100.0000</td></tr><tr><td>Outlier Check - w_normalized</td><td><span class="fail">FAIL</span></td><td>0.1667</td><td>0.0500</td></tr><tr><td>Outlier Check - h_values</td><td><span class="fail">FAIL</span></td><td>0.1476</td><td>0.0500</td></tr><tr><td>Diffusion Floor Analysis</td><td><span class="pass">PASS</span></td><td>0.0000</td><td>1.0000</td></tr><tr><td>Data Quality Check</td><td><span class="fail">FAIL</span></td><td>299990.0000</td><td>0.0000</td></tr><tr><td>W-H Consistency Check</td><td><span class="pass">PASS</span></td><td>-0.8558</td><td>-0.3000</td></tr></table>
+    </div>
+    
+    <div class="footer">
+        <p>Generated by Coffee Law Verifier | 1.0.0</p>
+    </div>
+</body>
+</html>
+        

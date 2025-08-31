@@ -7,7 +7,7 @@ import sys
 
 # Calculate samples per variant for 16k total samples
 # With 6 Pe_ctx variants: 16000 / 6 = 2666.67
-SAMPLES_PER_VARIANT = 2667
+SAMPLES_PER_VARIANT = 266788
 
 print(f"Running Coffee Law verification with {SAMPLES_PER_VARIANT} samples per variant")
 print(f"Total samples: {SAMPLES_PER_VARIANT * 6} (6 Pe_ctx variants)")
