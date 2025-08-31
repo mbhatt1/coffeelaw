@@ -1,13 +1,26 @@
+# Core dependencies
 numpy>=1.24.0
 scipy>=1.10.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
 pandas>=2.0.0
 scikit-learn>=1.3.0
-openai>=1.0.0
 tiktoken>=0.5.0
 tqdm>=4.65.0
 pytest>=7.4.0
 pydantic>=2.0.0
 python-dotenv>=1.0.0
 tenacity>=8.2.0
+
+# Provider-specific dependencies (optional - install only what you need)
+# OpenAI provider
+openai>=1.0.0
+
+# Anthropic provider
+anthropic>=0.18.0
+
+# Google/Gemini provider
+google-generativeai>=0.3.0
+
+# Google Vertex AI (optional, for enterprise embeddings)
+# google-cloud-aiplatform>=1.38.0

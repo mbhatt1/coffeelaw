@@ -325,25 +325,105 @@ def main():
     parser.add_argument('--samples', type=int, help='Override samples per variant')
     parser.add_argument('--use-openai', action='store_true', help='Use OpenAI embeddings instead of mock')
     
+    # New arguments for model selection
+    parser.add_argument('--llm-provider', type=str,
+                       choices=['mock', 'openai', 'anthropic', 'gemini'],
+                       default='mock',
+                       help='LLM provider to use (default: mock)')
+    parser.add_argument('--llm-model', type=str,
+                       help='Specific LLM model to use (provider-dependent)')
+    parser.add_argument('--embedding-provider', type=str,
+                       choices=['mock', 'openai', 'anthropic', 'gemini', 'vertex'],
+                       default='mock',
+                       help='Embedding provider to use (default: mock)')
+    parser.add_argument('--embedding-model', type=str,
+                       help='Specific embedding model to use (provider-dependent)')
+    
     args = parser.parse_args()
     
-    # Set up embedding client based on flag
+    # Handle legacy --use-openai flag
+    if args.use_openai and args.embedding_provider == 'mock':
+        args.embedding_provider = 'openai'
+    
+    # Set up LLM client based on provider
+    llm_client = None
+    if args.llm_provider == 'mock':
+        llm_client = MockLLMClient()
+        print("Using mock LLM")
+    elif args.llm_provider == 'openai':
+        try:
+            from coffee_law_verifier.measurement.openai_embedding_client import OpenAILLMClient
+            llm_client = OpenAILLMClient(model=args.llm_model)
+            print(f"Using OpenAI LLM: {args.llm_model or 'default'}")
+        except Exception as e:
+            print(f"Failed to initialize OpenAI LLM client: {e}")
+            print("Falling back to mock LLM")
+            llm_client = MockLLMClient()
+    elif args.llm_provider == 'anthropic':
+        try:
+            from coffee_law_verifier.measurement.anthropic_embedding_client import AnthropicLLMClient
+            llm_client = AnthropicLLMClient(model=args.llm_model)
+            print(f"Using Anthropic LLM: {args.llm_model or 'claude-3-haiku-20240307'}")
+        except Exception as e:
+            print(f"Failed to initialize Anthropic LLM client: {e}")
+            print("Falling back to mock LLM")
+            llm_client = MockLLMClient()
+    elif args.llm_provider == 'gemini':
+        try:
+            from coffee_law_verifier.measurement.gemini_embedding_client import GeminiLLMClient
+            llm_client = GeminiLLMClient(model=args.llm_model)
+            print(f"Using Gemini LLM: {args.llm_model or 'gemini-pro'}")
+        except Exception as e:
+            print(f"Failed to initialize Gemini LLM client: {e}")
+            print("Falling back to mock LLM")
+            llm_client = MockLLMClient()
+    
+    # Set up embedding client based on provider
     embedding_client = None
-    if args.use_openai:
+    if args.embedding_provider == 'mock':
+        embedding_client = MockEmbeddingClient()
+        print("Using mock embeddings")
+    elif args.embedding_provider == 'openai':
         try:
             from coffee_law_verifier.measurement.openai_embedding_client import OpenAIEmbeddingClient
-            embedding_client = OpenAIEmbeddingClient()
-            print("Using OpenAI embeddings")
+            embedding_client = OpenAIEmbeddingClient(model=args.embedding_model)
+            print(f"Using OpenAI embeddings: {args.embedding_model or 'text-embedding-3-small'}")
         except Exception as e:
-            print(f"Failed to initialize OpenAI client: {e}")
+            print(f"Failed to initialize OpenAI embedding client: {e}")
             print("Falling back to mock embeddings")
             embedding_client = MockEmbeddingClient()
-    else:
-        embedding_client = MockEmbeddingClient()
-        print("Using mock embeddings (use --use-openai for real embeddings)")
+    elif args.embedding_provider == 'anthropic':
+        try:
+            from coffee_law_verifier.measurement.anthropic_embedding_client import AnthropicEmbeddingClient
+            embedding_client = AnthropicEmbeddingClient()
+            print("Using Anthropic embeddings (simulated)")
+        except Exception as e:
+            print(f"Failed to initialize Anthropic embedding client: {e}")
+            print("Falling back to mock embeddings")
+            embedding_client = MockEmbeddingClient()
+    elif args.embedding_provider == 'gemini':
+        try:
+            from coffee_law_verifier.measurement.gemini_embedding_client import GeminiEmbeddingClient
+            embedding_client = GeminiEmbeddingClient(model=args.embedding_model)
+            print(f"Using Gemini embeddings: {args.embedding_model or 'models/embedding-001'}")
+        except Exception as e:
+            print(f"Failed to initialize Gemini embedding client: {e}")
+            print("Falling back to mock embeddings")
+            embedding_client = MockEmbeddingClient()
+    elif args.embedding_provider == 'vertex':
+        try:
+            from coffee_law_verifier.measurement.gemini_embedding_client import VertexAIEmbeddingClient
+            embedding_client = VertexAIEmbeddingClient(model=args.embedding_model)
+            print(f"Using Vertex AI embeddings: {args.embedding_model or 'textembedding-gecko@003'}")
+        except Exception as e:
+            print(f"Failed to initialize Vertex AI embedding client: {e}")
+            print("Falling back to mock embeddings")
+            embedding_client = MockEmbeddingClient()
     
-    # Initialize verifier
-    verifier = CoffeeLawVerifier(embedding_client=embedding_client)
+    # Initialize verifier with both clients
+    verifier = CoffeeLawVerifier(config=CONFIG, embedding_client=embedding_client)
+    # Set the LLM client
+    verifier.llm_client = llm_client
     
     if args.quick:
         # Run quick test
