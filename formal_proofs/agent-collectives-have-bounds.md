@@ -14,7 +14,8 @@ that emergence can achieve, and it can be stated in one line:
 > plus what its tools can carry.**
 
 That isn't a hunch or an empirical trend. It's a theorem, and it holds for any
-agents at all — LLMs, people, or programs. This post explains what it says, why
+kind of agent — LLMs, people, or programs — under four assumptions, listed
+[below](#assumptions). This post explains what it says, why
 it's true, and what it does and doesn't rule out. The full proofs and the
 scripts that check them are in [the formal proofs](formal_proofs.md).
 
@@ -108,34 +109,54 @@ computes the exact information gained:
 | Ask for bit 0, then bit 1 | 1.062 bits — exactly the budget |
 | "Adaptive" strategy that sometimes re-asks for the same bit | 0.982 bits — below the budget |
 | Any amount of debate afterwards | +0 bits |
-| Same strategy, noise-free tool | 2 bits — the whole truth |
+| Ask for bit 0, then bit 1, with a noise-free tool | 2 bits — the whole truth |
 
-The bound is tight: a good strategy reaches it exactly. A clever-looking
-strategy can waste it. Nothing exceeds it.
+Here the bound is tight: a good strategy reaches it exactly. (That isn't
+guaranteed in general; sometimes no strategy can use a tool at full capacity.)
+A clever-looking strategy can waste the budget. Nothing exceeds it.
 
-## Why imperfect agents do worse than the bound
+## Why real agents fall short of the bound
 
-The budget is a ceiling for *ideal* reasoners. Real agents, and LLMs in
-particular, lose more along the way. Three losses are worth naming
+The budget is a ceiling for every agent. Ideal reasoners can reach it; real
+agents, and LLMs in particular, fall short of it by losing information along the
+way. Three losses are worth naming
 ([LLM specialization](llm_specialization.md)):
 
 - **Miscalibration.** An agent that updates its beliefs too little, or too
-  confidently, pays a cost equal to the KL divergence between its beliefs and
-  the correct ones ([B1](llm_specialization.md#b1)).
+  confidently, loses exactly the KL divergence between the correct beliefs and
+  its own, measured in log-loss. In decision terms the proved cost is at most
+  proportional to the square root of that KL
+  ([B1](llm_specialization.md#b1), [B0](llm_specialization.md#b0)).
 - **Lossy messages.** When one agent summarizes for another, the information
   lost is exactly `I(Θ;data) − I(Θ;message)`
   ([B2](llm_specialization.md#b2)).
 - **Persuasion.** A confident message that carries *zero* information about the
   truth can still flip another agent's answer from right to wrong. In the
-  worked example, an agent with a 60/40 belief in the right answer flips once it
+  example in B3, an agent with a 60/40 belief in the right answer flips once it
   gives a constant, uninformative claim more than 1/6 of the weight
   ([B3](llm_specialization.md#b3)).
 
-These combine into one bound on how far a collective's decisions fall short
-([B4](llm_specialization.md#b4)). It also explains a familiar failure:
+These combine into one upper bound on how far a collective's decisions can
+fall short ([B4](llm_specialization.md#b4)). It also explains a familiar failure:
 agreement grows while knowledge doesn't. Perfect consensus on a random claim
 carries zero information about the truth
 ([Theorem 6](formal_proofs.md#theorem-6)).
+
+<a id="assumptions"></a>
+
+## The four assumptions
+
+The bound needs exactly these, and nothing about the agents themselves
+([Theorem 7](formal_proofs.md#theorem-7)):
+
+1. **No hidden channels.** Information about the truth reaches the collective
+   only through its starting data and its tool results.
+2. **Truth-independent randomness.** Sampling noise, scheduling and coin flips
+   don't secretly depend on the answer.
+3. **Tools are channels from the truth.** Given the query, a tool's output
+   depends on the world, not on the agents' private state. (Tools may be
+   adaptive or stateful.)
+4. **The truth is fixed.** The agents' actions don't change the answer.
 
 ## What the bound does *not* say
 
@@ -146,8 +167,9 @@ It's tempting to stretch a result like this. Here is where it stops.
   theorems, writing code, planning — is computation, and this bound says
   nothing about it.
 - **It isn't a fixed ceiling.** The budget grows with every informative tool
-  call. A collective with unlimited tool access is limited only by how much
-  uncertainty there was to resolve.
+  call. A collective with unlimited access to informative tools is limited only
+  by how much uncertainty there was to resolve. (A tool whose output doesn't
+  depend on the truth adds nothing, however often it's called.)
 - **It doesn't separate AI from people.** The proof never looks inside the
   agents. A lab full of scientists obeys exactly the same bound. It's a law of
   learning, not a limit specific to machines — so it can't be used to argue
@@ -165,9 +187,10 @@ If you're building agent systems, the bound turns into practical advice:
 
 1. **Don't expect debate to add facts.** Use it to surface and combine what the
    agents already know — that's where its value is.
-2. **Spend effort on the tool channels.** More informative calls, less noisy
-   tools, and better choices of what to query are the only levers that raise
-   the ceiling.
+2. **Spend effort on the inputs: tools and starting data.** More informative
+   calls, less noisy tools and better choices of what to query raise the
+   ceiling during the run; better starting data (a better-trained model, more
+   relevant context) raises it before the run. Nothing else does.
 3. **Route, don't just talk.** The board's biggest contribution with tools is
    telling the agent with the tool *which* query is informative — worth exactly
    the value of that information ([Theorem 5](formal_proofs.md#theorem-5)).
@@ -185,8 +208,9 @@ textbook information theory. The closed-group case has been written up for
 LLM debate by Shin ([arXiv:2605.01704](https://arxiv.org/abs/2605.01704)) and
 Choi et al. ([arXiv:2508.17536](https://arxiv.org/abs/2508.17536)), and Yang et
 al. ([arXiv:2602.03794](https://arxiv.org/abs/2602.03794)) give a bound of the
-same shape with agents as the channels. What this work adds is the explicit
-accounting for tools: per-call capacity, adaptive queries, and an error floor.
+same shape with agents as the channels. What these notes add, as far as we found, is
+the explicit accounting for tools: per-call capacity, adaptive queries, and an
+error floor.
 (That comparison is based on the papers' summaries; their exact statements
 are worth reading in full.)
 
