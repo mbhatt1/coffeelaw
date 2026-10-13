@@ -1,6 +1,6 @@
 # Collective information acquisition as the geometry of one convex functional
 
-`formal_proofs.md` proves conservation, synergy and growth. This document shows
+[`formal_proofs.md`](formal_proofs.md) proves conservation, synergy and growth. This document shows
 they are three readings of a single object: the negative-entropy potential on
 the belief simplex, its Bregman divergence, and the two flows it induces
 (Bayesian evidence and consensus averaging).
@@ -16,23 +16,27 @@ Statements marked **Lemma** or **Theorem** are proved. Statements marked
 **Model** are modeling assumptions, not theorems.
 
 --------------------------------------------------------------------------------
+<a id="theorems-1-3"></a>
+
 ## Theorems 1–3 in brief
 
-Proofs are in `formal_proofs.md`; here we only fix notation.
+Proofs are in [`formal_proofs.md`](formal_proofs.md); here we only fix notation.
 
-- **Conservation (Theorem 1).** If after `t=0` the agents only communicate and
+- **Conservation ([Theorem 1](formal_proofs.md#theorem-1)).** If after `t=0` the agents only communicate and
   compute, the whole trajectory `W` is a function `ψ(D₀, ξ)`, so
   `I(Θ ; W) ≤ I(Θ ; D₀, ξ) = I(Θ ; D₀) + I(Θ ; ξ | D₀) = I(Θ ; D₀)`.
-- **Synergy (Theorem 2).** `I(Θ ; S ∪ {Y}) − I(Θ ; S) = I(Θ ; Y | S) ≥ 0`, but
+- **Synergy ([Theorem 2](formal_proofs.md#theorem-2)).** `I(Θ ; S ∪ {Y}) − I(Θ ; S) = I(Θ ; Y | S) ≥ 0`, but
   `S ↦ I(Θ;S)` need not be submodular. With `Θ = B₁ ⊕ B₂`:
   `I(Θ;B₁) = I(Θ;B₂) = 0`, `I(Θ;B₁,B₂) = 1`. The bit was present jointly in
   `D₀`; only its accessibility changed.
-- **Growth (Theorem 3).** A world channel `O ∼ p(· | θ, a)` adds
+- **Growth ([Theorem 3](formal_proofs.md#theorem-3)).** A world channel `O ∼ p(· | θ, a)` adds
   `I(Θ ; O | H, a) = E_{θ∼p(·|H)}[ KL( p(O|θ,a) ‖ p(O|H,a) ) ] ≥ 0`, strictly
   positive iff the likelihood varies with `θ` on a set of positive posterior
-  probability. Theorem 7 bounds the total by the tools' channel capacity.
+  probability. [Theorem 7](formal_proofs.md#theorem-7) bounds the total by the tools' channel capacity.
 
 ================================================================================
+<a id="functional"></a>
+
 # The functional
 
 Let `Δ = { b ∈ ℝ^K_{≥0} : Σ_k b_k = 1 }` be the belief simplex. Define the
@@ -46,6 +50,8 @@ In bits, `∇F(b)_k = log b_k + 1/ln 2`, and on the tangent space
 `1/ln 2` is only the change of units.)
 
 --------------------------------------------------------------------------------
+<a id="g1"></a>
+
 ## G1. KL is the Bregman divergence of F; mutual information is its mean
 
 **Lemma G1.** The Bregman divergence of `F`,
@@ -68,11 +74,13 @@ travelled from the prior. In this language, synergy is the failure of
 submodularity of `S ↦ E[D_F(b^S, b)]`.
 
 --------------------------------------------------------------------------------
+<a id="g2"></a>
+
 ## G2. Value of information and information gain are the same Jensen gap
 
 Let `V(b) = max_a Σ_θ b(θ) u(a,θ)`. It is convex (a maximum of linear functions),
 and Bayesian posteriors are a martingale, `E_M[b^M] = b`, so Jensen gives
-`VoI(M) = E_M[V(b^M)] − V(b) ≥ 0` (`formal_proofs.md`, Lemmas 6.1–6.2), with
+`VoI(M) = E_M[V(b^M)] − V(b) ≥ 0` ([`formal_proofs.md`, Lemmas 6.1–6.2](formal_proofs.md#theorem-5)), with
 equality iff an action optimal at the prior stays optimal at almost every
 posterior.
 
@@ -89,6 +97,8 @@ Information gain is the special case where the decision is "report a belief" and
 the payoff is log loss.
 
 --------------------------------------------------------------------------------
+<a id="g3"></a>
+
 ## G3. The Fisher–Rao metric: small information gain is squared length
 
 `F`'s Hessian is the Fisher information metric of the categorical family. For a
@@ -108,6 +118,8 @@ Riemannian manifold.
   `log b⁺_k = log b_k + log p(o | θ_k) − log Z`.
 
 --------------------------------------------------------------------------------
+<a id="g4"></a>
+
 ## G4. Two flows on the simplex
 
 A real collective does not apply the exact Bayesian map. **Model:** its belief
@@ -115,7 +127,7 @@ dynamics combine two flows.
 
 | Flow | Coordinates in which it is affine | Effect |
 |------|-----------------------------------|--------|
-| **Evidence** (Bayes, Theorem 3) | e-coordinates (translation by log-likelihood) | moves toward the true vertex in expectation (Lemma G4) |
+| **Evidence** (Bayes, [Theorem 3](formal_proofs.md#theorem-3)) | e-coordinates (translation by log-likelihood) | moves toward the true vertex in expectation (Lemma G4) |
 | **Consensus** `bᵢ ← Σⱼ Wᵢⱼ bⱼ` (linear pooling, row-stochastic `W`) | m-coordinates (convex combination) | contracts beliefs toward each other (Lemma G5) |
 
 Linear pooling is **not** Bayesian: pooling agents who saw overlapping evidence
@@ -167,6 +179,8 @@ regime occurs depends on `W`, the environment and the policy. No universal
 threshold follows from these lemmas.
 
 ================================================================================
+<a id="tools"></a>
+
 # Tools (the external channel), placed in the geometry
 
 Split each action into a board post and a tool query, `A_t^i = (M_t^i, Q_t^i)`.
@@ -180,8 +194,8 @@ With world state `E_t` and `D_t = (G_t, E_t, X_t^{1:N})`:
 **Theorem 4 (tools carry the only new information).** If `Q_t = g(D_t, ξ)` with
 `ξ ⟂ (Θ, D_t)`, then `I(Θ ; Q_t | D_t) = 0` and
 `I(Θ ; D_{t+1}) − I(Θ ; D_t) = I(Θ ; O_{t+1} | D_t, Q_t)`
-(`formal_proofs.md`, Theorem 4). By Lemma G2 this is the only term that adds
-expected Bregman distance `E[D_F(b⁺, b)]` about `Θ`; Theorem 7 caps it per round
+([`formal_proofs.md`, Theorem 4](formal_proofs.md#theorem-4)). By Lemma G2 this is the only term that adds
+expected Bregman distance `E[D_F(b⁺, b)]` about `Θ`; [Theorem 7](formal_proofs.md#theorem-7) caps it per round
 by the tool's channel capacity.
 
 **Theorem 5 (the board's routing value is a value of information).** With
@@ -189,13 +203,15 @@ pooled state, the group can pick the query with the highest information yield
 for the actual state of the world; an isolated agent must pick blind. The
 difference is the value of information of the pooled signal in the decision
 problem "which query to run," with utility equal to information yield
-(`formal_proofs.md`, Theorem 5). In the minimal witness — agent 1 knows which
+([`formal_proofs.md`, Theorem 5](formal_proofs.md#theorem-5)). In the minimal witness — agent 1 knows which
 query is informative (`K`), agent 2 owns the tool — the gain is `½` bit, and it
 is not information about `V` created by talking but the value of knowing which
 experiment to run. In geometric terms, pooling lets the group choose the query
 whose expected Bregman step `E[D_F(b⁺, b)]` is largest.
 
 --------------------------------------------------------------------------------
+<a id="access-control"></a>
+
 ## Beyond the manifold: access control and the disclosure edge
 
 Two parts of the tool loop sit **outside** this information geometry:
@@ -207,7 +223,7 @@ Two parts of the tool loop sit **outside** this information geometry:
   the channel.
 - **The disclosure edge** `O_{t+1} → G_{t+1}` is a capability-amplification
   channel. The mechanism that gives the collective its power — making
-  distributed information jointly accessible (Theorem 2) — is the same one that
+  distributed information jointly accessible ([Theorem 2](formal_proofs.md#theorem-2)) — is the same one that
   turns a scoped private measurement into broadly reusable capability. A safe
   design keeps raw results scoped, publishes only a vetted summary to `G`, and
   logs the action.
@@ -216,6 +232,8 @@ Theorems 1–7 describe what the collective can know; `S_t` and the disclosure
 edge describe what it is permitted to do with a channel.
 
 ================================================================================
+<a id="unifies"></a>
+
 # What this unifies
 
 One potential `F = −H` and the martingale property of Bayesian posteriors give:
@@ -224,27 +242,29 @@ One potential `F = −H` and the martingale property of Bayesian posteriors give
    information already in `D₀` (DPI).
 2. **Synergy:** `S ↦ E[D_F(b^S, b)]` can fail to be submodular.
 3. **Growth:** only a channel that samples from the true `θ` adds Bregman
-   distance (Theorems 3, 4), and Theorem 7 caps how much.
+   distance (Theorems 3, 4), and [Theorem 7](formal_proofs.md#theorem-7) caps how much.
 4. **Value of information:** VoI is the Jensen gap of a convex `V`; information
    gain is the log-loss case (Lemma G3).
 5. **Regret:** decision regret is controlled by belief distance — first-order in
    total variation, hence by `sqrt(KL)` through Pinsker
-   (`llm_specialization.md`, Lemma B0), and locally by the Fisher metric (G3).
+   ([`llm_specialization.md`, Lemma B0](llm_specialization.md#b0)), and locally by the Fisher metric (G3).
 
 ================================================================================
+<a id="limits"></a>
+
 # What is NOT proven (honest limits)
 
 - **Lemma G4 needs a correctly specified likelihood.** If an agent's model of
   `p(o|θ,a)` is wrong, or it does not update by Bayes' rule, the evidence drift
   can be positive. Real LLMs are not calibrated Bayesians
-  (`llm_specialization.md`, B1).
+  ([`llm_specialization.md`, B1](llm_specialization.md#b1)).
 - **The two-flow decomposition is a model.** Real message passing mixes the two
   flows nonlinearly; whether a given system is well described by "Bayes step +
   linear pooling" must be measured.
 - **No universal emergence threshold** follows. The sign of the net drift
   depends on `W`, the environment and the policy.
-- **Strict growth in Theorem 3** requires the likelihood to depend on `θ`; a tool
+- **Strict growth in [Theorem 3](formal_proofs.md#theorem-3)** requires the likelihood to depend on `θ`; a tool
   whose output is independent of `θ` adds nothing.
 
 Exact numerical checks of Lemmas G1–G5 and the G3 constant are in
-`verify_geometry.py`.
+[`verify_geometry.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_geometry.py).

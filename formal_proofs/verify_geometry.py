@@ -98,3 +98,4 @@ ck("(3) pooling can hurt the better agent", L_after > L_before,
 
 print()
 print("ALL PASSED" if all(res) else "SOME FAILED")
+raise SystemExit(0 if all(res) else 1)

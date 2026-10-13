@@ -147,3 +147,4 @@ print(f"  [{'OK ' if ok4 else 'FAIL'}] E[regret] <= bound")
 
 print()
 print("ALL PASSED" if all(res) else "SOME FAILED")
+raise SystemExit(0 if all(res) else 1)
