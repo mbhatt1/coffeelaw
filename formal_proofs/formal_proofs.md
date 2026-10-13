@@ -314,6 +314,9 @@ falls strictly below the budget. Machine-checked in [`verify.py`](https://github
 **Scope of the assumptions.**
 - (A1) is the substantive one: everything a model learned in training that
   correlates with `Θ` belongs in `D₀`. Missing a side channel breaks the bound.
+  For facts about the world, "correlates" is over *possible worlds*: training
+  is a channel from the world to the weights, and a model's weights carry at
+  most what its training data carried ([Proposition 18](extensions.md#prop-18)).
 - (A3) is general. If tools read a hidden world state `W` correlated with
   `Θ`, apply [Theorem 7](#theorem-7) with `W` in place of `Θ`; then, if `D₀` and every tool
   result depend on the world only through `W`, `Θ — W — D_T` and
@@ -467,8 +470,10 @@ where theirs uses the family's own no-input entropy.
   computation, equal computation spent another way should do as well.
 
 Two results look like tensions but fit. Du et al. also report better
-*factuality* from debate; the facts were in the model's weights, i.e. in `D₀`,
-so debate made stored information usable without adding any. Choi et al. prove
+*factuality* from debate. Within the actual world, a factual answer is
+determined by the question, so the facts are usable-information problems
+([Proposition 18](extensions.md#prop-18)); debate made stored knowledge usable without adding any
+information. Choi et al. prove
 debate does not improve expected correctness for Bayesian agents; such agents
 have an unrestricted `V`, so their reasoning gap is zero and Theorem 8 predicts
 no gain. *These empirical summaries are from the papers' abstracts and
@@ -612,7 +617,8 @@ Functions*, STOC 1989).
 - **Extensions** ([`extensions.md`](extensions.md)): exact accounting and the
   equality condition (Theorem 7′), compute-gated channels (11), the worst-case
   law (12), acting (13), communication (14), a changing world (15), adversaries
-  and provenance (16), continuous truths (17), and what remains open.
+  and provenance (16), continuous truths (17), what a model's weights know
+  (Proposition 18), and what remains open.
 - Theorems 2, 5, 6 and the tightness of [Theorem 7](#theorem-7) reduce to finite joint-law computations, each verified
   exactly in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) (ALL PASSED).
 - [Lemmas 6.1–6.2](#theorem-5) supply the value-of-information half (convex `V`, martingale

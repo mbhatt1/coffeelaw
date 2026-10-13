@@ -1,6 +1,6 @@
 # Paper: The Coffee Law
 
-`coffee_law.tex` is a 4-page paper (3 pages of text plus references) in the IEEE
+`coffee_law.tex` is a 5-page paper (including references) in the IEEE
 conference template, written up from the proofs in
 [`../formal_proofs`](../formal_proofs). The compiled PDF is
 [`coffee_law.pdf`](coffee_law.pdf).
@@ -32,7 +32,8 @@ venues' pages and deadline trackers as of October 2026.
 
 - Fill in the affiliation and email in the author block.
 - Read the cited 2025–26 papers in full. The empirical comparisons in
-  Section VI are based on their abstracts and published summaries.
+  the "Consistency with Empirical Findings" section are based on their
+  abstracts and published summaries.
 
 ## Build
 

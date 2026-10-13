@@ -30,7 +30,8 @@ task ([Theorems 9–10](formal_proofs/formal_proofs.md#theorem-9)).
   [Theorem 8](formal_proofs/formal_proofs.md#theorem-8)
 - [Paper (IEEE format, PDF)](paper/coffee_law.pdf) — see [`paper/README.md`](paper/README.md) for the target venue
 - [Extensions](formal_proofs/extensions.md) — sandboxes, acting, communication,
-  a changing world, adversaries, continuous truths, and what remains open
+  a changing world, adversaries, continuous truths, what a model's weights
+  know, and what remains open
 - [Information geometry](formal_proofs/proof.md)
 - [From any agent to LLMs](formal_proofs/llm_specialization.md)
 

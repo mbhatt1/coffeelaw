@@ -262,6 +262,11 @@ gives the rest of the picture ([extensions](extensions.md)):
 - **Adversaries can hide information, but not destroy it**, as long as every
   message is attributed to its author. On an anonymous board, a single liar
   can erase everything ([Theorem 16](extensions.md#theorem-16)).
+- **A model knows only what its training carried.** Training is a channel
+  from the world to the weights, so the Coffee Law applies to training too. And
+  within the real world, a model's factual knowledge is something it computes
+  from the question, which is why reasoning and debate can sharpen it
+  ([Proposition 18](extensions.md#prop-18)).
 - **Quantities work too.** For numbers rather than categories, each bit of
   information divides the best possible squared error by four
   ([Theorem 17](extensions.md#theorem-17)).
@@ -290,7 +295,9 @@ It's tempting to stretch a result like this. Here is where it stops.
   see above.)
 - **It assumes no hidden channels.** Anything a model absorbed in training
   that correlates with the answer counts as starting data. Forget a channel and
-  the accounting is wrong.
+  the accounting is wrong. (Training is itself a channel from the world to the
+  model, so a model can't know facts its training data never carried;
+  [Proposition 18](extensions.md#prop-18).)
 
 ## What to do with this
 
@@ -339,8 +346,10 @@ strategy, debate helps (Du et al., [arXiv:2305.14325](https://arxiv.org/abs/2305
 tends to do no better than majority voting or self-consistency at equal effort
 (Smit et al., [PMLR 235](https://proceedings.mlr.press/v235/smit24a.html); Choi et al.), which is what you'd expect if its value is
 extra reasoning. Even Du et al.'s finding that debate improves *factuality*
-fits: those facts were already in the model's weights, so debate made them
-usable rather than adding them.
+fits: for a model in the real world, the question already determines a factual
+answer, so the facts are something to *compute* from what the model holds, not
+something new to learn. Debate helped the model use what it already knew
+([Proposition 18](extensions.md#prop-18)).
 (These comparisons are based on the papers' abstracts and published summaries.)
 
 The short version, and the Coffee Law in one sentence: **a collective's
