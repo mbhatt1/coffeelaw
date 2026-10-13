@@ -209,6 +209,67 @@ for _ in range(300):
 results.append(ok)
 print(f"  [{'OK ' if ok else 'FAIL'}] 300 random joint laws: 0 <= usable <= available")
 
+print("Scenario 9  computational bounds on closing the reasoning gap (Theorems 9-10)")
+from itertools import combinations
+# (a) Parity of n uniform bits: reading any k < n bits gives zero information,
+#     so a predictor that reads k < n bits has zero usable information.
+n = 4
+t = []
+for bits in product([0,1], repeat=n):
+    a = {f'B{i}': bits[i] for i in range(n)}; a['Th'] = sum(bits) % 2
+    t.append((a, Fr(1, 2**n)))
+ok = True
+for k in range(n):
+    for S in combinations(range(n), k):
+        ok &= abs(MI(t, ['Th'], [f'B{i}' for i in S])) < 1e-12
+results.append(ok)
+print(f"  [{'OK ' if ok else 'FAIL'}] parity n={n}: every subset of fewer than {n} bits carries 0 bits about Theta")
+check(f"parity n={n}: all {n} bits carry", MI(t, ['Th'], [f'B{i}' for i in range(n)]), 1)
+# Adaptive reads: exhaustively check every deterministic adaptive decision tree of depth n-1.
+def trees(depth, unread):
+    """Yield adaptive read strategies as nested tuples (index, subtree_if_0, subtree_if_1)."""
+    if depth == 0 or not unread:
+        yield None; return
+    for i in unread:
+        rest = [j for j in unread if j != i]
+        for t0 in trees(depth - 1, rest):
+            for t1 in trees(depth - 1, rest):
+                yield (i, t0, t1)
+def transcript(tree, bits):
+    out = []
+    while tree is not None:
+        i, t0, t1 = tree; out.append((i, bits[i])); tree = t1 if bits[i] else t0
+    return tuple(out)
+n3 = 3; ok = True; count = 0
+for tree in trees(n3 - 1, list(range(n3))):
+    count += 1
+    rows = [({'Th': sum(b) % 2, 'R': transcript(tree, b)}, Fr(1, 2**n3)) for b in product([0,1], repeat=n3)]
+    ok &= abs(MI(rows, ['Th'], ['R'])) < 1e-12
+results.append(ok)
+print(f"  [{'OK ' if ok else 'FAIL'}] parity n={n3}: all {count} adaptive {n3-1}-read strategies carry 0 bits")
+# (b) Collective split: N=2 agents each read n/2 bits and post the block parity;
+#     the posts carry the full bit, and total reads = n.
+t2 = []
+for bits in product([0,1], repeat=n):
+    a = {'Th': sum(bits) % 2, 'P1': (bits[0]+bits[1]) % 2, 'P2': (bits[2]+bits[3]) % 2}
+    t2.append((a, Fr(1, 2**n)))
+check("2 agents x 2 reads, posts (P1,P2) carry", MI(t2, ['Th'], ['P1','P2']), 1)
+check("one agent's post alone carries", MI(t2, ['Th'], ['P1']), 0)
+# (c) Lemma 10.1: sampling a guess from predictor q succeeds w.p. >= 2^(-cross-entropy)
+rng = __import__('random').Random(2); ok = True; worst = 1.0
+for _ in range(2000):
+    K, M = rng.randint(2, 5), rng.randint(1, 4)
+    w = [[rng.random() + 1e-3 for _ in range(K)] for _ in range(M)]; z = sum(map(sum, w))
+    pj = [[x / z for x in row] for row in w]                  # p(d, theta)
+    q = []
+    for _m in range(M):
+        v = [rng.random() + 1e-3 for _ in range(K)]; zz = sum(v); q.append([x / zz for x in v])
+    succ = sum(pj[d][th] * q[d][th] for d in range(M) for th in range(K))
+    ce = -sum(pj[d][th] * log2(q[d][th]) for d in range(M) for th in range(K))
+    ok &= succ >= 2 ** (-ce) - 1e-12; worst = min(worst, succ - 2 ** (-ce))
+results.append(ok)
+print(f"  [{'OK ' if ok else 'FAIL'}] 2000 random predictors: success >= 2^(-cross-entropy) (min slack {worst:.4f})")
+
 print()
 print("ALL PASSED" if all(results) else "SOME FAILED")
 raise SystemExit(0 if all(results) else 1)

@@ -162,6 +162,31 @@ That splits tasks into two kinds:
 Most real tasks are a mix, and the useful question is which ceiling you are
 hitting.
 
+### How much reasoning does it take?
+
+Closing a reasoning gap costs computation, and that cost has bounds of its own
+([Theorems 9–10](formal_proofs.md#theorem-9)):
+
+- **Only total compute counts.** A group of agents can always be simulated by
+  one machine doing the same total work. So more agents help reasoning exactly
+  as much as the extra compute they bring. Splitting work across agents buys
+  speed, not capability.
+- **Some gaps need a fixed amount of work.** To know whether an even or odd
+  number of `n` coin flips came up heads, you must look at all `n`. Read
+  `n − 1` of them, cleverly or not, and you know nothing; read the last one and
+  you know everything. Ten agents can split the reading and finish faster, but
+  together they still read all `n`.
+- **Some gaps can't be closed efficiently at all.** In cryptography, an
+  encrypted message can fully determine a secret bit, so all of the information
+  is there, while every fast program does no better than a coin flip at finding
+  it (assuming standard cryptography is secure). No amount of efficient
+  reasoning, by one agent or a million, closes that gap.
+
+So the reasoning ceiling is real, but how hard it is to reach depends on the
+task, from cheap to effectively impossible. No general shortcut exists:
+predicting the cost for every task would settle open questions like whether
+P = NP.
+
 ## Why real agents fall short of the bound
 
 The budget is a ceiling for every agent. Ideal reasoners can reach it; real
@@ -212,8 +237,9 @@ It's tempting to stretch a result like this. Here is where it stops.
 - **It doesn't cap intelligence.** It caps *information about a fixed external
   truth*. Working out the consequences of what you already know — proving
   theorems, writing code, planning — is reasoning. Reasoning has its own
-  ceiling (the information you hold), but the Coffee Law says nothing about how
-  much computation it takes to reach it.
+  ceiling (the information you hold), and reaching it takes computation that
+  ranges from cheap to effectively impossible depending on the task
+  ([Theorems 9–10](formal_proofs.md#theorem-9)).
 - **It isn't a fixed ceiling.** The budget grows with every informative tool
   call. A collective with unlimited access to informative tools is limited only
   by how much uncertainty there was to resolve. (A tool whose output doesn't
