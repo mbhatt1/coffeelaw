@@ -1,5 +1,8 @@
 # Formal proofs: the Coffee Law and collective information acquisition
 
+*The proofs below are written in standard mathematical style and checked
+numerically on every finite example; they are not machine-verified.*
+
 All random variables are discrete with finite support on a common finite
 probability space `(Ω, 2^Ω, ℙ)`. Logarithms are base 2; `0 log 0 := 0`.
 
@@ -618,7 +621,8 @@ Functions*, STOC 1989).
   equality condition (Theorem 7′), compute-gated channels (11), the worst-case
   law (12), acting (13), communication (14), a changing world (15), adversaries
   and provenance (16), continuous truths (17), what a model's weights know
-  (Proposition 18), and what remains open.
+  (Proposition 18), where to spend (Proposition 19), measuring the quantities,
+  and what remains open.
 - Theorems 2, 5, 6 and the tightness of [Theorem 7](#theorem-7) reduce to finite joint-law computations, each verified
   exactly in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) (ALL PASSED).
 - [Lemmas 6.1–6.2](#theorem-5) supply the value-of-information half (convex `V`, martingale
