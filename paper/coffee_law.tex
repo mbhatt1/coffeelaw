@@ -1,5 +1,9 @@
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
+% Variant switches. Build variants from the wrappers coffee_law_anon.tex and
+% coffee_law_final.tex, which set these before \input-ing this file.
+\providecommand{\PaperAnon}{0}   % 1: anonymous (double-blind) submission
+\providecommand{\PaperFinal}{0}  % 1: camera-ready (IEEE copyright notice)
 
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{booktabs}
@@ -9,6 +13,7 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,decorations.pathreplacing}
 \usepackage[hidelinks]{hyperref}
+\ifnum\PaperAnon=1 \hypersetup{pdfauthor={}}\fi
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
@@ -28,10 +33,19 @@
 
 \title{The Coffee Law: Information, Reasoning and\\Communication Ceilings for Tool-Using Agent Collectives}
 
+\ifnum\PaperAnon=1
+\author{\IEEEauthorblockN{Anonymous Author(s)}}
+\else
 \author{\IEEEauthorblockN{Manish Bhatt}
 \IEEEauthorblockA{\emph{Affiliation to be completed}\\
 \emph{email to be completed}}}
+\fi
 
+\ifnum\PaperFinal=1
+% Must precede \maketitle. Replace with the exact line the conference supplies.
+\IEEEpubid{\makebox[\columnwidth]{979-8-XXXX-XXXX-X/27/\$31.00~\copyright~2027 IEEE\hfill}%
+\hspace{\columnsep}\makebox[\columnwidth]{\hfill}}
+\fi
 \maketitle
 
 \begin{abstract}
@@ -66,8 +80,8 @@ A team of LLM agents is paged about a production incident. Two questions arrive.
 \emph{Which server is failing?} The answer is in live logs the team has not yet
 read. \emph{Is this patch to the locking code correct?} The answer is fully
 determined by code the team already has. A common belief is that adding agents,
-rounds of debate or thinking time helps with both. It does not, and the reason
-is precise: the two questions hit different ceilings.
+rounds of debate or thinking time helps with both. It helps with only one of
+them, and the reason is precise: the two questions hit different ceilings.
 
 The first is limited by \textbf{information}. No amount of discussion reveals
 log lines nobody has fetched; only tool calls (reading logs, running queries)
@@ -99,8 +113,11 @@ so a sandbox is a guarantee on which channels any feasible computation can reach
 \item \textbf{A unified explanation of published findings}
 (Table~\ref{tab:evidence}), and testable predictions.
 \end{enumerate}
+\ifnum\PaperFinal=1 \IEEEpubidadjcol\fi
 Full proofs and exact numerical checks of every finite example are
-public.\footnote{\url{https://github.com/mbhatt1/coffeelaw}}
+\ifnum\PaperAnon=1 provided as supplementary material.\footnote{Supplementary
+material: proofs and check scripts, to be released publicly on acceptance.}%
+\else public.\footnote{\url{https://github.com/mbhatt1/coffeelaw}}\fi
 
 \begin{figure}[t]
 \centering
@@ -155,8 +172,10 @@ team only through $D_0$ and tool results. (A2)~\emph{Coin flips are honest}:
 $\xi_t,\zeta_t$ are independent of $\Theta$ and of everything before them.
 (A3)~\emph{Tools are channels from the world}: given $(\Theta,Q_t,D_t)$, $O_{t+1}$
 has law $K_t$ (tools may be adaptive or stateful). (A4)~\emph{The truth is
-fixed}: the team's actions do not change $\Theta$. Section~\ref{sec:ext}
-relaxes each assumption.
+fixed}: the team's actions do not change $\Theta$. (A1) is not an assumption
+about the agents but the definition of which channels exist;
+Theorem~\ref{thm:gated} treats agents that can open new ones, and
+Section~\ref{sec:ext} relaxes the others.
 
 \noindent\textbf{Capacity.} For each query $q$ and history $d$, the tool is a
 channel $\theta\mapsto K_t(\cdot\mid\theta,q,d)$ with capacity
@@ -170,8 +189,9 @@ over \emph{possible worlds} $W$: a question $X\perp W$ has answer
 $\Theta=\theta(W,X)$, and training is a channel $W\to\text{corpus}\to M$ to the
 weights $M$. Then $\I(\Theta;X,M)\le\I(\Theta;X)+\I(W;M)$ and
 $\I(W;M)\le\I(W;\text{corpus})$: a model knows at most what its training data
-carried. In one fixed world, $M$ is constant and $\Theta$ is a function of $X$, so
-a model's factual knowledge appears as \emph{usable} information
+carried. In one fixed world, $\Theta$ is a function of $X$ and $M$ carries no
+further information about it, so a model's factual knowledge appears as
+\emph{usable} information
 (Section~\ref{sec:reasoning}): something it computes from the question.
 
 \section{Ceiling 1: Information (the Coffee Law)}\label{sec:coffee}
@@ -215,21 +235,23 @@ agents raise the budget only by making more, or more informative, tool calls.
 
 \begin{corollary}[Calls needed]\label{cor:rounds}
 If $\Theta$ is uniform on $2^k$ values ($k\ge2$), $\I(\Theta;D_0)=0$ and $C_t\le
-C$, then error $\le\varepsilon$ requires at least $((1-\varepsilon)k-1)/C$ tool
+C$ with $C>0$, then error $\le\varepsilon$ requires at least $((1-\varepsilon)k-1)/C$ tool
 rounds, however many agents run and however they talk.
 \end{corollary}
 
 \noindent\textbf{Example: debugging.} A test run returns pass or fail, so it
-carries at most one bit. Finding one bad commit among $n$ therefore needs about
-$\log n$ test runs whatever the team does; binary search (\texttt{git bisect})
-achieves this. A flaky test that misreports with probability $p$ carries at most
+carries at most one bit. If the bad commit is equally likely to be any of $n$, identifying it
+with error at most $\varepsilon$ needs at least $(1-\varepsilon)\log n-1$ test
+runs whatever the team does (Corollary~\ref{cor:rounds}); binary search
+(\texttt{git bisect}) uses $\lceil\log n\rceil$. A flaky test that misreports with probability $p$ carries at most
 $1-h(p)$ bits, raising the minimum by the factor $1/(1-h(p))$.
 
 \noindent\textbf{Exact accounting and tightness.} The proof gives the identity
 $\I(\Theta;D_T)=\I(\Theta;D_0)+\sum_t\E_s[\I(\Theta;O_{t+1}|S_t=s)]$: total
 information is the sum of what each call actually revealed. The bound is tight
-exactly when every call is used at full capacity, i.e.\ almost every posterior
-is a capacity-achieving input for the chosen tool. For rich tools (a web page),
+exactly when every call is used at full capacity: almost every posterior is a
+capacity-achieving input for the chosen tool, and each chosen tool attains
+$C_t$. For rich tools (a web page),
 the realized per-call gain is the binding quantity; the capacity form bites for
 low-capacity tools such as tests, checks and short API answers.
 Table~\ref{tab:tight} shows a case where a good policy meets the bound and a
@@ -238,7 +260,7 @@ poor one wastes it.
 \begin{table}[t]
 \caption{Exact information after two tool rounds. $\Theta$ is uniform on 4
 values; each call returns one chosen bit of $\Theta$, flipped with probability
-$0.1$ ($C\approx0.531$ bits).}
+$0.1$ ($C\approx0.531$ bits). Budget: $\min\{\Hh(\Theta),2C\}$.}
 \label{tab:tight}
 \centering
 \begin{tabular}{@{}lcc@{}}
@@ -282,8 +304,8 @@ $\I_\V(g(D)\to\Theta)\le\I(\Theta;D)$.
 (a)~The prior predictor gives $\Hh_\V\le\Hh(\Theta)$. For any $f$,
 $\E[-\log f[D](\Theta)]=\Hh(\Theta|D)+\E_D\KL(p(\cdot|D)\|f[D])$; take the
 infimum. (b)~Part~(a) and Theorem~\ref{thm:coffee}. (c)~Let two agents hold
-uniform bits $B_1,B_2$ and $\Theta=B_1\oplus B_2$, and let $\V$ read one
-coordinate of the record. Each bit alone is independent of $\Theta$, so usable
+uniform bits $B_1,B_2$ and $\Theta=B_1\oplus B_2$, and let $\V$ contain the
+predictors that read at most one coordinate of the record. Each bit alone is independent of $\Theta$, so usable
 information is $0$, although the pair determines $\Theta$. After one reasoning
 step $g(D)=(B_1\oplus B_2,B_2)$, one coordinate equals $\Theta$: usable
 information is $1$ bit, available information unchanged. The last claim is (a)
@@ -308,9 +330,11 @@ more observations cannot close.
 
 \noindent\textbf{Imperfect agents.} Real agents fall further below the chain
 (proofs in the accompanying notes, footnote~1). Acting on a belief $\hat b$ instead of the
-correct posterior $b^*$ costs at most $2U\,\mathrm{TV}(b^*,\hat b)+\delta\le
-2U\sqrt{(\ln2/2)\KL(b^*\|\hat b)}+\delta$ for utility range $U$ and own
-suboptimality $\delta$. A summary $M$ of data $D$ loses exactly
+correct posterior $b^*$ costs at most
+\[
+2U\,\mathrm{TV}(b^*,\hat b)+\delta\;\le\;2U\sqrt{(\ln2/2)\,\KL(b^*\|\hat b)}+\delta
+\]
+for utility range $U$ and own suboptimality $\delta$. A summary $M$ of data $D$ loses exactly
 $\E\,\KL(p(\cdot|D)\|p(\cdot|M))=\I(\Theta;D)-\I(\Theta;M)$. And a confident
 message carrying zero information can flip a correct agent: with belief
 $(0.6,0.4)$ for the truth, giving weight $\alpha>1/6$ to a constant false claim
@@ -337,11 +361,14 @@ $\I_{\V_{\kappa S}}(D\to\Theta)\le\I(\Theta;D)$.
 One machine can run the agents step by step, keeping their memories and the
 board in separate regions, at $O(1)$ cost per simulated step.
 \end{proof}
+\noindent The comparison holds in any fixed cost model (RAM steps, FLOPs, tokens
+processed), up to the overhead of interleaving.
 
 \begin{lemma}\label{lem:guess}
 Sampling $\hat\Theta\sim f[D]$ is correct with probability at least
-$2^{-\E[-\log f[D](\Theta)]}$ (Jensen). If $\Hh(\Theta)\le1$, usable information
-$\delta$ gives success probability at least $\frac12+\frac{\ln2}{2}\delta$.
+$2^{-\E[-\log f[D](\Theta)]}$ (Jensen). If $\Hh(\Theta)\le1$ and $f$ attains usable
+information $\delta$ (cross-entropy $\Hh(\Theta)-\delta$), the success
+probability is at least $\frac12+\frac{\ln2}{2}\delta$.
 \end{lemma}
 
 \begin{theorem}[Some gaps are expensive]\label{thm:lower}
@@ -389,7 +416,8 @@ agent~1's exact posterior.
 \end{proof}
 
 \noindent Parity splits cheaply (each agent posts one bit); inner product needs
-about $n/2$ bits. This ceiling holds even when information and compute are
+about $n/2$ bits. With more agents, the same bounds apply to the bits crossing
+any cut that separates the inputs. This ceiling holds even when information and compute are
 unlimited.
 
 \section{Beyond the Assumptions}\label{sec:ext}
@@ -401,8 +429,8 @@ accompanying notes (footnote~1).
 Let $A_S(d)$ be the queries a team can issue from record $d$ within compute $S$.
 Then $\I(\Theta;D_T)\le\I(\Theta;D_0)+\sum_t\sup_{d,\,q\in A_S(d)}\mathrm{Cap}(K_{t,q,d})$,
 nondecreasing in $S$. If a tool reveals a uniform 2-bit $\Theta$ only after a
-uniform $k$-bit password is found, $S$ guesses give exactly
-$\min\{1,S/2^k\}\cdot2$ bits.
+uniform $k$-bit password is found, $S$ guesses give at most
+$\min\{1,S/2^k\}\cdot2$ bits, with equality for distinct guesses.
 \end{theorem}
 \noindent So ``reasoning never adds information'' holds for a \emph{fixed} set of
 reachable channels. Discovering an endpoint, credential or exploit is
@@ -425,8 +453,8 @@ covers open-ended work: an agent cannot reliably build what it has not learned
 the user wants.
 
 \noindent\textbf{A changing world.} If $\Theta_t$ drifts as a Markov chain with
-strong data-processing constant $\eta<1$~\cite{ahlswede1976}, and tools observe
-the current state, then $\I(\Theta_t;D_t)\le\eta^t\I(\Theta_0;D_0)+\eta C/(1-\eta)$:
+strong data-processing constant $\eta<1$~\cite{ahlswede1976}, tools observe the
+current state, and $C_t\le C$, then $\I(\Theta_t;D_t)\le\eta^t\I(\Theta_0;D_0)+\eta C/(1-\eta)$:
 knowledge saturates however long agents run.
 
 \noindent\textbf{Adversaries and provenance.} If every post is stored with its
@@ -438,7 +466,7 @@ the unattributed record carries 0 bits. Authenticate and attribute messages.
 \noindent\textbf{Continuous truths.} For real $\Theta$ the budget holds with
 capacities under input constraints, and every estimator has
 $\E[(\Theta-\hat\Theta)^2]\ge(2\pi e)^{-1}2^{2(h(\Theta)-B_T)}$, with equality for
-a Gaussian truth in Gaussian noise: each bit divides the best squared error by 4.
+a Gaussian truth in Gaussian noise: each bit divides the error floor by 4.
 
 \noindent\textbf{Where to spend.} From the chain: extra reasoning on the same
 record can raise usable information by at most the reasoning gap
@@ -449,7 +477,7 @@ headroom is exhausted.
 
 \noindent\textbf{Measuring the quantities.} Usable information is estimable:
 $\Hh(\Theta)$ minus the held-out log-loss of a team's calibrated predictions
-lower-bounds $\I_\V$, with PAC guarantees under computational
+estimates a lower bound on $\I_\V$, with PAC guarantees under computational
 constraints~\cite{xu2020}. Tool capacity is bounded by the answer space, and for
 noisy tools by measured error rates (a test that flakes with probability $p$ has
 $C\le1-h(p)$). Available information about the world, $\I(W;M)$ for a pretrained
@@ -458,8 +486,9 @@ structural rather than numerical.
 
 \section{Evidence and Predictions}\label{sec:empirical}
 
-Table~\ref{tab:evidence} lists predictions of the theory and published findings
-that bear on them. None contradicts it. Two points deserve care. First, the
+Table~\ref{tab:evidence} lists predictions of the theory and the published
+findings we found that bear on them, including mixed ones; none contradicts
+it. Two points deserve care. First, the
 theory does not predict that debate is worse than other methods; it predicts
 that debate is worth its compute, so at matched compute it should perform about
 as well as self-consistency or voting. Small gaps in either
@@ -469,11 +498,16 @@ some findings look like tensions. Debate is reported to improve
 determined by the question, so this is reasoning over stored knowledge, not new
 information. Debate is proved not to help Bayesian agents~\cite{choi2025}; such
 agents have no reasoning gap, so Theorem~\ref{thm:reasoning} predicts exactly
-that.
+that. Finally, diverse agents outperform identical ones~\cite{yang2026}: models
+trained on different data carry different information (a larger $D_0$) and
+compute different things (a larger $\V$), whereas identical agents add only
+compute.
 
 \begin{table*}[t]
-\caption{Predictions of the theory and published evidence. Findings are from
-the cited papers' abstracts and published summaries.}
+\caption{Predictions of the theory and published evidence. \emph{Supported}:
+the finding matches the predicted direction. \emph{Consistent}: compatible with
+the prediction but mixed across studies. Findings are summarized from the cited
+papers' abstracts and published summaries.}
 \label{tab:evidence}
 \centering
 \footnotesize

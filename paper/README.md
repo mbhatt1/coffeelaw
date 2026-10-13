@@ -7,6 +7,31 @@ conference template, written up from the proofs in
 with a plain-language explanation, and a running example (an agent team
 debugging a production incident) ties the three ceilings together.
 
+## Versions (one source)
+
+All content lives in `coffee_law.tex`; small wrappers set switches before
+`\input`-ing it, so versions never drift apart.
+
+| File | Version | Use |
+|---|---|---|
+| `coffee_law.tex` → `coffee_law.pdf` | Named submission | AGENT 2027 (single-anonymous); fits both the full and short tracks |
+| `coffee_law_anon.tex` → `coffee_law_anon.pdf` | Anonymous | Double-blind venues such as ISIT |
+| `coffee_law_final.tex` → `coffee_law_final.pdf` | Camera-ready | Adds the IEEE copyright notice (placeholder code until the conference supplies it) |
+
+## Checking
+
+The `camera-ready` skill (`.claude/skills/camera-ready/`) holds the checklist and
+the checker. To recheck after edits:
+
+```bash
+cd paper
+python3 ../.claude/skills/camera-ready/scripts/check_paper.py coffee_law.tex --page-limit 5 --numbers numbers.json
+python3 ../.claude/skills/camera-ready/scripts/check_paper.py coffee_law_anon.tex --page-limit 5 --anonymous --names "Manish Bhatt,mbhatt1"
+```
+
+`numbers.json` ties every number in the paper to the check script that produces
+it. The latest audit is in [`camera_ready_report.md`](camera_ready_report.md).
+
 ## Target venue
 
 **AGENT 2027, International Workshop on Agentic Engineering, at ICSE 2027**
@@ -14,9 +39,8 @@ debugging a production incident) ties the three ceilings together.
 
 - Topics include tool use and multi-agent coordination.
 - Accepted papers are published by IEEE.
-- Full papers: up to 8 pages excluding references; short papers: up to 5. This
-  paper targets the **full-paper track** (about 5 pages of text). To submit as
-  a short paper instead, move Section VII (Beyond the Assumptions) to the notes.
+- Full papers: up to 8 pages excluding references; short papers: up to 5. The
+  body is 5 pages, so the paper fits **either track** as is.
 - Single-anonymous review, so author names stay on the submission.
 - Deadline: **November 13, 2026** per the ICSE 2027 workshop call. The workshop
   page also shows November 27; confirm on the submission site.
