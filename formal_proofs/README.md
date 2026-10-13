@@ -1,9 +1,11 @@
-# Formal proofs: collective information acquisition
+# Coffee Law: formal proofs
 
 **Read online:** <https://mbhatt1.github.io/coffeelaw/> · Blog post: [Agent collectives have bounds](agent-collectives-have-bounds.md)
 
 Information-theoretic results on what a group of communicating agents (LLMs or
-otherwise) can learn about an external truth `Θ`.
+otherwise) can learn about an external truth `Θ`. The central result,
+Theorem 7, is the **Coffee Law**: a collective can never know more about the
+world than its starting data plus what its tools can carry.
 
 | File | Contents |
 |---|---|

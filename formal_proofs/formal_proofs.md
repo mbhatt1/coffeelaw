@@ -1,4 +1,4 @@
-# Formal proofs: collective information acquisition
+# Formal proofs: the Coffee Law and collective information acquisition
 
 All random variables are discrete with finite support on a common finite
 probability space `(Ω, 2^Ω, ℙ)`. Logarithms are base 2; `0 log 0 := 0`.
@@ -218,7 +218,7 @@ performance) is required to certify knowledge.
 --------------------------------------------------------------------------------
 <a id="theorem-7"></a>
 
-## 8. Theorem 7 — The capacity budget (agents + tools)
+## 8. Theorem 7 — The Coffee Law (capacity budget for agents + tools)
 
 Theorems 1–4 say *where* information comes from. [Theorem 7](#theorem-7) says *how much* can
 arrive, for any number of agents, any communication protocol, any internal
@@ -254,7 +254,7 @@ In round `t`:
 
 where `𝒪_t` is the set of possible results in round `t` (all calls together).
 
-**Theorem 7 (capacity budget).** Let `B_T := I(Θ ; D₀) + Σ_{t<T} C_t`. Then
+**Theorem 7 (Coffee Law; capacity budget).** Let `B_T := I(Θ ; D₀) + Σ_{t<T} C_t`. Then
 
         I(Θ ; D_T)  ≤  min( H(Θ), B_T ),
 
@@ -286,6 +286,9 @@ function of `D_T` and independent noise ([Lemma 1.4](#lemmas)). For any estimato
 5. *Fano.* For `Θ̂ = f(D_T, noise)`, Fano's inequality gives
    `H(Θ|Θ̂) ≤ 1 + ℙ(Θ̂≠Θ) log₂(|Θ|−1)`, and DPI gives
    `H(Θ|Θ̂) = H(Θ) − I(Θ;Θ̂) ≥ H(Θ) − min(H(Θ), B_T)`. Rearrange. ∎
+
+**Name.** We call Theorem 7 the **Coffee Law**. [Theorem 1](#theorem-1)
+(conservation) is its special case with no tools, `C_t = 0`.
 
 **Corollary 7.1 (calls needed).** If `Θ` is uniform on `2^k` values (`k ≥ 2`),
 `I(Θ;D₀) = 0`, and every round has capacity at most `C`, then reaching error
@@ -345,7 +348,7 @@ checking before relying on the comparison.*
 - [Theorem 3](#theorem-3) (growth) = the KL identity for conditional MI; it holds *because*
   the world kernel breaks the Markov chain of [Theorem 1](#theorem-1).
 - [Theorem 4](#theorem-4) (tools) = chain rule + "queries are functions."
-- [Theorem 7](#theorem-7) (capacity budget) = [Theorem 4](#theorem-4) per round + "a tool call is one use
+- [Theorem 7](#theorem-7) (the Coffee Law) = [Theorem 4](#theorem-4) per round + "a tool call is one use
   of a channel, so its gain is at most capacity" + Fano.
 - Theorems 2, 5, 6 and the tightness of [Theorem 7](#theorem-7) reduce to finite joint-law computations, each verified
   exactly in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) (ALL PASSED).
