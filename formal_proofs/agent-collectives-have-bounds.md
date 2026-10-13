@@ -115,7 +115,7 @@ Here the bound is tight: a good strategy reaches it exactly. (That isn't
 guaranteed in general; sometimes no strategy can use a tool at full capacity.)
 A clever-looking strategy can waste the budget. Nothing exceeds it.
 
-## Why imperfect agents do worse than the bound
+## Why real agents fall short of the bound
 
 The budget is a ceiling for every agent. Ideal reasoners can reach it; real
 agents, and LLMs in particular, fall short of it by losing information along the
