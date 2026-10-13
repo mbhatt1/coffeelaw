@@ -29,7 +29,8 @@ concave, so by Jensen `Σ_x p(x) log(q(x)/p(x)) ≤ log Σ_x p(x)·q(x)/p(x)
 **Lemma 1.2 (MI as KL; nonnegativity).** `I(X;Y) = KL( p_{XY} ‖ p_X⊗p_Y ) ≥ 0`,
 and `I(X;Y|Z) = Σ_z p(z) KL( p_{XY|z} ‖ p_{X|z}⊗p_{Y|z} ) ≥ 0`.
 *Proof.* Immediate from the definitions and Lemma 1.1 applied to the joint vs.
-product pmf (conditioned on `z`, then averaged over `z ≥ 0`). ∎
+product pmf: for each `z`, apply it to `p_{XY|z}` vs. `p_{X|z}⊗p_{Y|z}`, then
+average with the nonnegative weights `p(z)`. ∎
 
 **Lemma 1.3 (Chain rule for MI).**
 `I(X ; Y, Z) = I(X ; Z) + I(X ; Y | Z)`.
@@ -139,19 +140,48 @@ prior belief `b = p(·)` and posterior `b^M = p(· | M)`,
 `E_M[ V(b^M) ] ≥ V(b)`, i.e. `VoI(M) = E_M[V(b^M)] − V(b) ≥ 0`.
 *Proof.* Convexity: each `b ↦ Σ_θ b(θ)u(a,θ)` is linear, and `max` over `a` of
 convex functions is convex. By Lemma 6.1, `E_M[b^M] = b`. Jensen for the convex
-`V`: `E_M[V(b^M)] ≥ V(E_M[b^M]) = V(b)`. Strict iff `b^M` lands on distinct
-linear pieces of `V` (changes the argmax) with positive probability. ∎
+`V`: `E_M[V(b^M)] ≥ V(E_M[b^M]) = V(b)`.
+*Equality case.* Equality holds iff an action `a₀` optimal at the prior `b` is
+still optimal at `b^M` for ℙ-almost every `M`. (If so, `E_M V(b^M) =
+E_M Σ_θ b^M(θ)u(a₀,θ) = Σ_θ b(θ)u(a₀,θ) = V(b)`. Conversely, `V(b^M) ≥
+Σ_θ b^M(θ)u(a₀,θ)` pointwise and the two sides have the same mean `V(b)` under
+equality, so they agree almost surely.) So information has strictly positive
+value exactly when it changes the best action with positive probability. ∎
 
-**Theorem 5 (routing witness).** Let `K` uniform on `{1,2}` and `V` uniform on
-`{0,1}` be independent; the tool returns `O=V` iff the query `q=K`, else `O=⊥`.
-Writing the target truth as `V`:
-- isolated (q chosen independent of K): `I(V ; O | Q) = 1/2` bit;
-- pooled (`K` posted, so `q=K`): `I(V ; O) = 1` bit.
-The board's marginal value is the `1/2`-bit gap, which by Lemma 6.2 is exactly
-the value of learning *which* experiment is informative before running it.
-*Proof.* Direct computation of each mutual information from the joint law;
-machine-checked in `verify.py`, Scenario 3. The gap equals the VoI of the
-signal `K` for the experiment-selection decision. ∎
+**Theorem 5 (routing is value of information).** Let `V` be the target truth and
+`K` a variable some agent holds that affects which query is informative, with
+`V ⟂ K`. A query `q` produces `O ∼ p(· | V, K, q)`. Define the **information
+yield** of query `q` in state `k` as
+
+        u(q, k) := I(V ; O | Q = q, K = k).
+
+This is a decision problem with action `q`, state `k` and utility `u`. Then:
+- an agent that does not know `K` and picks a fixed `q` gets expected yield
+  `Σ_k p(k) u(q,k)`, at best `V_u(p_K) := max_q Σ_k p(k) u(q,k)`;
+- a collective in which `K` is posted to the board can pick `q = q*(K)` and gets
+  `E_K[ max_q u(q, K) ] = E_K[ V_u(e_K) ]`;
+- the board's routing value is the gap,
+  `E_K[V_u(e_K)] − V_u(p_K) = VoI(K)` for this decision problem, which is `≥ 0`
+  by Lemma 6.2 and `> 0` iff no single query is optimal for almost every `k`.
+
+(Yields are measured conditional on `K`, i.e. as information about `V` once
+`K` is known; when `V ⟂ K` and the query reveals nothing about `K`, as below,
+this matches the unconditional quantities.)
+
+*Proof.* The first two items are the definitions of expected utility under a
+fixed action and under the best response to `K` (a randomized `q` independent of
+`K` cannot beat the best fixed one, since expected yield is linear in the
+randomization). The third is Lemma 6.2 applied with prior `p_K` and the fully
+informative signal `M = K`. ∎
+
+**Witness.** `K` uniform on `{1,2}`, `V` uniform on `{0,1}`, independent; the
+tool returns `O=V` iff `q=K`, else `O=⊥`. Then `u(q,k) = 1` if `q=k`, else `0`.
+- isolated: `V_u(p_K) = max_q ½ = ½` bit (and a uniformly random `q` also gives
+  `I(V ; O | Q) = ½`);
+- pooled: `E_K max_q u(q,K) = 1` bit (and `I(V ; O) = 1` with `q=K`);
+- routing value = `VoI(K) = ½` bit.
+Machine-checked in `verify.py`, Scenario 3, both as mutual informations from
+the joint law and as the VoI of `K` in the yield decision problem. ∎
 
 --------------------------------------------------------------------------------
 ## 7. Theorem 6 — Consensus is not knowledge; coupling is not intelligence
@@ -300,7 +330,7 @@ checking before relying on the comparison.*
 - Theorems 2, 5, 6 and the tightness of Theorem 7 reduce to finite joint-law computations, each verified
   exactly in `verify.py` (ALL PASSED).
 - Lemmas 6.1–6.2 supply the value-of-information half (convex `V`, martingale
-  posteriors), unifying routing (Thm 5) with the earlier geometry: the same
+  posteriors), unifying routing (Thm 5) with the geometry in `proof.md`: the same
   Jensen gap governs action choice and experiment choice.
 
 Every general theorem is reduced to Jensen's inequality; every numerical claim

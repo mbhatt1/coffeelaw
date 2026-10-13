@@ -88,6 +88,16 @@ for k,v in product([1,2],[0,1]):
     t.append(({'K':k,'V':v,'Q':k,'O':o}, Fr(1,2)*Fr(1,2)))
 check("pooled I(V;O)", MI(t,['V'],['O']), 1)
 print("  routing gain = 1 - 0.5 = 0.5 bit")
+# Theorem 5: the gain is the VoI of K in the decision problem with
+# action q, state k, utility u(q,k) = I(V;O | Q=q, K=k).
+def u(q, k):
+    tt = [({'V':v,'O':(v if q==k else 'bot')}, Fr(1,2)) for v in [0,1]]
+    return MI(tt, ['V'], ['O'])
+V_prior = max(sum(0.5*u(q,k) for k in [1,2]) for q in [1,2])
+V_post = sum(0.5*max(u(q,k) for q in [1,2]) for k in [1,2])
+check("V_u(prior) = best blind yield", V_prior, 0.5)
+check("E_K max_q u(q,K) = routed yield", V_post, 1)
+check("VoI(K) = routing gain", V_post - V_prior, 0.5)
 
 print("Scenario 4  copy coupling vs independence")
 t = [({'A1':r,'A2':r}, Fr(1,2)) for r in [0,1]]                         # A2 copies A1=R
