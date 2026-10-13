@@ -439,9 +439,8 @@ budget), but a one-look agent can use only 0.2655 bits of it. The remaining
 observations of the world.
 
 **What Theorem 8 does not give.** It says reasoning can close the gap and never
-overshoot. It does not say how much computation a given gap needs; that is a
-question of computational complexity, and for problems like factoring large
-numbers no efficient classical method is known.
+overshoot. It does not say how much computation a given gap needs; that is
+the subject of [Theorems 9–10](#theorem-9).
 
 **Related work.** Usable information under computational constraints is
 "predictive V-information" in Xu, Zhao, Song, Stewart and Ermon, *A Theory of
@@ -476,9 +475,125 @@ no gain. *These empirical summaries are from the papers' abstracts and
 published summaries.*
 
 --------------------------------------------------------------------------------
+<a id="theorem-9"></a>
+
+## 10. Theorems 9–10 — Computational bounds on closing the reasoning gap
+
+[Theorem 8](#theorem-8) says reasoning can close the gap between usable and
+available information but never overshoot. This section bounds the computation
+that closing it takes: from above, by the collective's total compute
+(Theorem 9), and from below, unconditionally for a simple task and
+conditionally for a cryptographic one (Theorem 10).
+
+**Compute-indexed families.** Fix a machine model (e.g. a word RAM). Let
+`V_S` be the set of predictors `f` for which, given a record `d`, the
+probabilities `f[d]` can be computed and a sample from `f[d]` drawn in at most
+`S` steps, with reading one symbol of `d` counted as a step. Each `V_S`
+contains the constant prior predictor, and `S ≤ S'` implies `V_S ⊆ V_S'`, so
+`S ↦ I_{V_S}(D → Θ)` is nondecreasing and, by [Theorem 8](#theorem-8), at most
+`I(Θ ; D)`.
+
+**Collective compute.** A collective's protocol is an algorithm: in each round
+each agent runs for some number of steps, reading the record and the board and
+posting. Its **total compute** `S` is the sum, over all agents and rounds, of
+their steps, with every board read or write counted as a step.
+
+**Theorem 9 (compute ceiling).** If a collective with total compute `S` outputs
+a predictor of `Θ` from the record `D`, that predictor lies in `V_{κS}`, where
+`κ` is a constant depending only on the machine model. Hence
+
+        usable information of the collective  ≤  I_{V_{κS}}(D → Θ)  ≤  I(Θ ; D).
+
+The number of agents and the communication pattern enter only through `S`.
+
+*Proof.* A single machine can run the agents one step at a time in any fixed
+interleaving consistent with the protocol, keeping each agent's memory and the
+board in separate regions. Each simulated step, including each board operation,
+costs `O(1)` steps of the simulator on a word RAM, so the simulation runs in
+`κS` steps and outputs the same predictor. The second inequality is
+[Theorem 8](#theorem-8)(a). ∎
+
+**Reading.** Parallelism buys wall-clock time, not total work. More agents help
+reasoning exactly as much as the extra compute they bring, which is the
+computational counterpart of [Corollary 7.2](#theorem-7) for tools.
+
+**Lemma 10.1 (log-loss advantage gives a guessing advantage).** For any
+predictor `f`, drawing the guess `Θ̂ ∼ f[D]` succeeds with probability at least
+`2^{−E[−log f[D](Θ)]}`. In particular, if `f` achieves usable information `δ`
+about a `Θ` with `H(Θ) ≤ 1`, the guess succeeds with probability at least
+`2^{δ−1} ≥ ½ + (ln 2 / 2)·δ`.
+
+*Proof.* The success probability is `E[f[D](Θ)]`. By Jensen's inequality for
+the convex `−log`, `−log E[f[D](Θ)] ≤ E[−log f[D](Θ)]`. For the second claim,
+`E[−log f[D](Θ)] = H(Θ) − δ ≤ 1 − δ`, and `2^{δ−1} = ½·e^{δ ln 2} ≥ ½(1 + δ ln 2)`. ∎
+
+**Theorem 10 (compute lower bounds).**
+
+(a) *Unconditional: parity needs reading everything.* Let `D = (B₁, …, Bₙ)`
+be uniform bits and `Θ = B₁ ⊕ ⋯ ⊕ Bₙ`, so `I(Θ ; D) = 1`. Any predictor —
+or any whole collective, counting all agents' reads together — that reads at
+most `n − 1` of the bits, even adaptively, has **zero** usable information
+about `Θ`. Reading all `n` gives the full bit. So the usable information jumps
+from `0` to `1` exactly at `n` reads, and a collective of `N` agents needs at
+least `n` reads in total however the work is split. Splitting does buy
+wall-clock time: each agent reads `n/N` bits and posts its block's parity, and
+one agent XORs the `N` posts, so total reads are `n + N` and the longest chain
+is `n/N + N` reads.
+
+(b) *Conditional: some gaps cannot be closed by any efficient computation.*
+Assume one-way permutations exist. Let `f` be one, let `x, r` be uniform and
+independent in `{0,1}ⁿ`, and let `D = (f(x), r)` and `Θ = ⟨x, r⟩ mod 2`. Since
+`f` is a permutation, `Θ` is a function of `D`, so `I(Θ ; D) = H(Θ)`: all of the
+information is available. Yet for every family `V_poly` of predictors that run
+in time polynomial in `n`,
+
+        I_{V_poly}(D → Θ)  ≤  log₂(1 + 2ε(n))  ≤  (2 / ln 2)·ε(n),
+
+where `ε` is negligible (smaller than any inverse polynomial). The reasoning gap
+is essentially the whole of `H(Θ)`, and no amount of polynomial-time reasoning,
+by one agent or many, closes it.
+
+*Proof.* (a) Fix any adaptive read strategy (a decision tree over positions,
+possibly randomized independently of `D`). Conditioned on any transcript of
+fewer than `n` reads (positions and values), the unread bits are still uniform
+and independent, so the parity of `D` is uniform and independent of the
+transcript; hence `I(Θ ; transcript) = 0`. The predictor's output is a function
+of the transcript and independent randomness, so its usable information is at
+most `I(Θ ; transcript) = 0` by [Theorem 8](#theorem-8)(a). For a collective,
+every post is a function of the bits its author read, so the same argument
+applies to the union of all reads. The split protocol is direct.
+(b) By the Goldreich–Levin theorem, `⟨x, r⟩ mod 2` is a hard-core predicate of
+`(x, r) ↦ (f(x), r)`: every polynomial-time algorithm guesses `Θ` from `D` with
+probability at most `½ + ε(n)`. A polynomial-time predictor can be sampled from
+in polynomial time, so by Lemma 10.1 its cross-entropy is at least
+`−log₂(½ + ε) = 1 − log₂(1 + 2ε)`. Hence `H_{V_poly}(Θ | D) ≥ 1 − log₂(1 + 2ε)`
+and `I_{V_poly} = H(Θ) − H_{V_poly} ≤ log₂(1 + 2ε)`, using `H(Θ) ≤ 1`. ∎
+
+**What these bounds mean together.**
+- The reasoning ceiling can be reached only with enough compute, and Theorem 9
+  says that what counts is total compute, not the number of agents.
+- How much compute depends on the task. For parity it is exactly linear in the
+  input (Theorem 10a). For cryptographic tasks it is, under standard
+  assumptions, more than any polynomial (Theorem 10b): the information is fully
+  present and effectively unusable.
+- There is no general efficient bound in between. Bounding the compute needed
+  for an arbitrary task would resolve open problems in complexity theory, such
+  as whether P = NP.
+
+Checked in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py), Scenario 9: every subset of fewer than `n` bits (and, for
+`n = 3`, all 12 adaptive two-read strategies) carries zero information about the
+parity; the two-agent split carries the full bit; and Lemma 10.1 holds on 2000
+random predictors. Part (b) is conditional and is not checked numerically.
+
+**Related work.** The parity bound is the classical fact that parity has full
+query (decision-tree) complexity. Part (b) uses the Goldreich–Levin hard-core
+predicate (O. Goldreich and L. A. Levin, *A Hard-Core Predicate for All One-Way
+Functions*, STOC 1989).
+
+--------------------------------------------------------------------------------
 <a id="summary"></a>
 
-## 10. Summary of the logical structure
+## 11. Summary of the logical structure
 
 - [Lemmas 1.1–1.5](#lemmas) are the standard information-theoretic core, proved from
   Jensen's inequality alone.
@@ -491,6 +606,13 @@ published summaries.*
 - [Theorem 8](#theorem-8) (reasoning ceiling) = the cross-entropy identity +
   Theorem 7; usable information is capped by available information, but unlike
   it can be raised by computation.
+- [Theorems 9–10](#theorem-9) (computational bounds) = sequential simulation
+  (upper) + query complexity of parity and the Goldreich–Levin hard-core bit
+  (lower), linked to log-loss by Jensen's inequality.
+- **Extensions** ([`extensions.md`](extensions.md)): exact accounting and the
+  equality condition (Theorem 7′), compute-gated channels (11), the worst-case
+  law (12), acting (13), communication (14), a changing world (15), adversaries
+  and provenance (16), continuous truths (17), and what remains open.
 - Theorems 2, 5, 6 and the tightness of [Theorem 7](#theorem-7) reduce to finite joint-law computations, each verified
   exactly in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) (ALL PASSED).
 - [Lemmas 6.1–6.2](#theorem-5) supply the value-of-information half (convex `V`, martingale

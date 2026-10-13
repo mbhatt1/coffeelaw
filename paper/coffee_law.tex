@@ -19,6 +19,7 @@
 \newcommand{\Hh}{H}
 \newcommand{\KL}{D_{\mathrm{KL}}}
 \newcommand{\E}{\mathbb{E}}
+\newcommand{\hh}{h}
 
 \begin{document}
 
@@ -43,8 +44,14 @@ Fano's inequality turns this into a floor on error and a lower bound on the
 number of tool rounds. Second, a \emph{reasoning ceiling}: the information that
 computationally bounded agents can \emph{use} is at most what they \emph{hold},
 with the gap equal to an expected KL divergence; computation, including debate,
-can raise usable information but never available information. Together the two
-ceilings account for published findings that extra test-time compute does not
+can raise usable information but never available information. Third,
+\emph{computational bounds} on closing that gap: only a collective's total
+compute matters, parity requires reading every input, and under standard
+cryptographic assumptions some fully available information is unusable by any
+polynomial-time collective. We then extend the law to compute-gated
+channels (the formal content of sandboxing), worst-case tasks, acting,
+communication between agents, a drifting truth, adversaries and continuous
+quantities. The ceilings account for published findings that extra test-time compute does not
 help on knowledge-intensive tasks, that debate helps on reasoning tasks, and
 that debate performs about as well as voting at equal compute. Every finite
 example is verified exactly in public code.
@@ -85,9 +92,12 @@ and tools raise the right one. Our
 contributions are: (i)~the capacity budget for tool-using collectives with
 adaptive queries, with a Fano error floor and a tightness example; (ii)~the
 combination of available and usable information into one chain, with an exact
-expression for the reasoning gap; (iii)~an account of several published
+expression for the reasoning gap; (iii)~computational bounds on closing that
+gap, from above by total compute and from below unconditionally (parity) and
+conditionally (a hard-core bit); (iv)~extensions that relax each modeling
+assumption (Section~\ref{sec:ext}); (v)~an account of several published
 empirical findings on debate and test-time compute
-(Section~\ref{sec:empirical}); and (iv)~exact numerical verification of every
+(Section~\ref{sec:empirical}); and (vi)~exact numerical verification of every
 finite example.\footnote{Code, proofs and checks:
 \url{https://github.com/mbhatt1/coffeelaw}.}
 
@@ -221,6 +231,20 @@ Both bits, noise-free tool & 2.0000 & 2.0000 \\
 \end{tabular}
 \end{table}
 
+\noindent\textbf{Exact accounting and when the law is tight.} The proof gives
+the identity $\I(\Theta;D_T)=\I(\Theta;D_0)+\sum_t\E_s[\I(\Theta;O_{t+1}|S_t=s)]$,
+and each term is at most the capacity of the channel actually used, which is at
+most $\min\{\log|\mathcal O_t|,\log|\mathrm{supp}\,\Theta|\}$. Equality in
+Theorem~\ref{thm:coffee} holds iff almost every posterior is a
+capacity-achieving input for the chosen channel and that channel attains $C_t$.
+For rich tools the binding quantity is the realized gain; the capacity form bites
+for low-capacity tools. \emph{Example:} a test run returns pass or fail, so it
+carries at most 1 bit. Locating one bad commit among $n$ with error at most
+$\varepsilon$ needs at least $(1-\varepsilon)\log n-1$ runs
+(Corollary~\ref{cor:rounds}), whatever agents run the search; binary search
+(\texttt{git bisect}) uses $\lceil\log n\rceil$. A flaky test that misreports
+with probability $p$ raises the minimum by the factor $1/(1-h(p))$.
+
 \section{The Reasoning Ceiling}\label{sec:reasoning}
 
 Holding information is not the same as being able to use it: the prime factors
@@ -300,6 +324,153 @@ zero information about $\Theta$ can still flip a decision: an agent with belief
 $(0.6,0.4)$ in favor of the truth that gives weight $\alpha$ to a constant false
 claim answers wrongly once $\alpha>1/6$.
 
+\section{Computational Bounds on Reasoning}\label{sec:compute}
+
+How much computation does closing the reasoning gap take? Fix a machine model
+(a word RAM) and let $\mathcal V_S$ be the predictors whose probabilities can be
+computed, and which can be sampled from, in at most $S$ steps, reading one
+symbol of the record per step. Each $\mathcal V_S$ contains the prior predictor
+and $S\mapsto \I_{\mathcal V_S}$ is nondecreasing and at most $\I(\Theta;D)$. A
+collective's \emph{total compute} is the sum over agents and rounds of their
+steps, with each board read or write counted as a step.
+
+\begin{theorem}[Compute ceiling]\label{thm:compute}
+A predictor output by a collective with total compute $S$ lies in
+$\mathcal V_{\kappa S}$ for a constant $\kappa$ depending only on the machine
+model, so the collective's usable information is at most
+$\I_{\mathcal V_{\kappa S}}(D\to\Theta)\le\I(\Theta;D)$.
+\end{theorem}
+\begin{proof}
+One machine can run the agents step by step in a fixed interleaving, keeping
+each agent's memory and the board in separate regions, at $O(1)$ cost per
+simulated step; it outputs the same predictor in $\kappa S$ steps.
+\end{proof}
+The number of agents enters only through $S$: parallelism buys wall-clock time,
+not capability.
+
+\begin{lemma}\label{lem:guess}
+Sampling $\hat\Theta\sim f[D]$ succeeds with probability at least
+$2^{-\E[-\log f[D](\Theta)]}$. If $\Hh(\Theta)\le 1$ and $f$ achieves usable
+information $\delta$, it succeeds with probability at least
+$2^{\delta-1}\ge\frac12+\frac{\ln 2}{2}\delta$.
+\end{lemma}
+\begin{proof}
+The success probability is $\E[f[D](\Theta)]$; apply Jensen's inequality to
+$-\log$, and use $2^{\delta-1}=\tfrac12 e^{\delta\ln 2}$.
+\end{proof}
+
+\begin{theorem}[Compute lower bounds]\label{thm:lower}
+(a)~Let $D=(B_1,\dots,B_n)$ be uniform bits and $\Theta=\bigoplus_i B_i$. Any
+predictor, or any collective counting all agents' reads, that reads at most
+$n-1$ bits of $D$, even adaptively, has zero usable information; reading all
+$n$ gives one bit.
+(b)~Assume one-way permutations exist. For a one-way permutation $f$, uniform
+$x,r\in\{0,1\}^n$, $D=(f(x),r)$ and $\Theta=\langle x,r\rangle \bmod 2$, we have
+$\I(\Theta;D)=\Hh(\Theta)$, yet every polynomial-time family has
+$\I_{\mathcal V_{\mathrm{poly}}}(D\to\Theta)\le\log(1+2\varepsilon(n))$ with
+$\varepsilon$ negligible.
+\end{theorem}
+\begin{proof}
+(a)~Conditioned on any transcript of fewer than $n$ reads, the unread bits are
+uniform and independent, so $\Theta$ is independent of the transcript; the
+output is a function of the transcript and independent randomness, so
+Theorem~\ref{thm:reasoning}(a) gives zero. Posts are functions of their
+authors' reads, so the bound covers the union of a collective's reads.
+(b)~$\Theta$ is a function of $D$ because $f$ is a bijection. By the
+Goldreich--Levin theorem~\cite{goldreich1989}, every polynomial-time algorithm
+guesses $\Theta$ with probability at most $\frac12+\varepsilon(n)$; by
+Lemma~\ref{lem:guess}, every polynomial-time predictor has cross-entropy at
+least $1-\log(1+2\varepsilon)$, and $\Hh(\Theta)\le 1$.
+\end{proof}
+
+By Theorem~\ref{thm:compute}, part~(b) holds for any polynomial-time
+collective, however many agents it has. Part~(a) shows splitting work can only
+reduce wall-clock time: $N$ agents can each read $n/N$ bits and post block
+parities, but the total is still at least $n$ reads. Between these extremes no
+general efficient bound is possible without resolving open questions in
+complexity theory. The parity bounds and Lemma~\ref{lem:guess} are checked
+numerically in the code; part~(b) is conditional.
+
+\section{Extensions}\label{sec:ext}
+
+Each result below relaxes one modeling assumption. Full proofs and exact checks
+are in the accompanying notes (footnote~1).
+
+\begin{theorem}[Compute-gated channels]\label{thm:gated}
+Let $A_S(d)$ be the queries a collective can issue from record $d$ within total
+compute $S$. Then $\I(\Theta;D_T)\le \I(\Theta;D_0)+\sum_t \sup_{d,\,q\in A_S(d)}
+\mathrm{Cap}(K_{t,q,d})$, which is nondecreasing in $S$. If a tool reveals a
+uniform 2-bit $\Theta$ only after a uniform $k$-bit password is found, a
+collective trying $S$ passwords has exactly $\I(\Theta;D)=\min\{1,S/2^k\}\cdot 2$.
+\end{theorem}
+Hence ``reasoning never raises available information'' holds only for a fixed
+set of reachable channels: reasoning that discovers channels (endpoints,
+credentials, exploits) raises the budget. A \emph{sandbox} is a guarantee that
+$A_S(d)\subseteq A_{\mathrm{allowed}}$ for every feasible $S$; an escape is a
+feasible $S$ violating it. Recently reported incidents in which models under
+evaluation left their test sandbox to retrieve benchmark answers from an
+outside server are instances: the answers were not inside, so the only route
+was an unallowed channel.
+
+\begin{theorem}[Worst case]
+For $M\ge 3$ possible truths with no prior, initial data $D_0\sim
+K_0(\cdot|\theta)$ of capacity $C_0$, and any strategy,
+$\max_i \Pr_{\theta_i}(\hat\Theta\ne\theta_i)\ge(\log M-\min\{\log M,
+C_0+\sum_tC_t\}-1)/\log(M-1)$.
+\end{theorem}
+\noindent This is Fano's method under the uniform prior: for any family of tasks
+the collective cannot separate within its budget, there is a specific task on
+which it errs this often.
+
+\begin{theorem}[Acting is bounded by knowing]
+In a fixed unknown environment $W$ with $M\ge3$ actions, a unique best action
+$A^*=a^*(W)$ and gap $\Delta$, actions that may themselves be tool calls satisfy
+$\E[\mathrm{regret}_t]\ge \Delta\,(\Hh(A^*)-\min\{\Hh(A^*),
+\I(W;D_0)+\sum_{s<t}C_s\}-1)/\log(M-1)$.
+\end{theorem}
+\noindent The action is an estimator of $A^*$, and $\I(A^*;D_t)\le\I(W;D_t)$.
+Taking $W$ to be a user's hidden specification covers open-ended tasks: an
+agent cannot reliably build what it has not learned the user wants.
+
+\begin{theorem}[Communication ceiling]
+(a)~If the messages reaching agent~1 take at most $2^L$ values, then
+$\I(\Theta;D^1,\Pi)\le\I(\Theta;D^1)+L$. (b)~If agents 1 and 2 hold uniform
+$x,y\in\{0,1\}^n$ and $\Theta=\langle x,y\rangle\bmod 2$, then
+$\I(\Theta;x,y)=\Hh(\Theta)$, yet any protocol exchanging $L$ bits gives
+$\I(\Theta;x,\Pi)\le\log(1+2^{L+1-n/2})$, even with unlimited computation.
+\end{theorem}
+\noindent Part~(b) combines the discrepancy bound for inner product
+(Lindsey's lemma)~\cite{chor1988,kushilevitz1997} with Lemma~\ref{lem:guess}.
+The collective holds the answer, but no member learns it without about $n/2$
+bits of communication: a third ceiling, distinct from information and compute.
+
+\begin{theorem}[Drifting truth]
+If $\Theta_t$ is a Markov chain unaffected by the agents, with strong
+data-processing constant $\eta<1$~\cite{ahlswede1976}, and tools observe the
+current state, then $x_t=\I(\Theta_t;D_t)$ satisfies $x_{t+1}\le\eta(x_t+C_t)$,
+so $x_t\le\eta^t x_0+\eta C/(1-\eta)$ when $C_t\le C$.
+\end{theorem}
+\noindent In a changing world knowledge saturates however long agents run. For a
+bit flipping with probability $\rho$, $\eta=(1-2\rho)^2$.
+
+\begin{theorem}[Provenance]
+If every post is stored with its author, adversarial posts $M$ cannot reduce
+available information: $\I(\Theta;D,M)\ge\I(\Theta;D)$. Without provenance, one
+adversary can erase it: if an honest agent posts a fair bit $\Theta$ and an
+adversary posts $1-\Theta$, the unattributed record carries 0 bits.
+\end{theorem}
+\noindent Adversaries can hide information but not destroy it, as long as
+messages are attributed.
+
+\begin{theorem}[Continuous truth]
+For real $\Theta$ with differential entropy $\hh(\Theta)$, the budget of
+Theorem~\ref{thm:coffee} holds with capacities under input constraints (e.g.\
+$\tfrac12\log(1+P/\sigma^2)$ for a Gaussian tool), and every estimator has
+$\E[(\Theta-\hat\Theta)^2]\ge (2\pi e)^{-1}\,2^{2(\hh(\Theta)-\I(\Theta;D_0)-\sum_tC_t)}$.
+\end{theorem}
+\noindent This is the estimation counterpart of Fano's inequality~\cite{cover2006};
+it holds with equality for a Gaussian truth observed in Gaussian noise.
+
 \section{Consistency with Empirical Findings}\label{sec:empirical}
 
 The chain~\eqref{eq:chain} accounts for several published results.
@@ -330,8 +501,8 @@ not to improve expected correctness for Bayesian agents~\cite{choi2025}; such
 agents have an unrestricted $\mathcal V$, so their reasoning gap is zero and
 Theorem~\ref{thm:reasoning} predicts no gain.
 
-\noindent\textbf{Testable predictions.} (P1)~Accuracy versus the number of
-informative tool calls lies above the floor of Theorem~\ref{thm:coffee}.
+\noindent\textbf{Testable predictions.} (P1)~Error rate versus the number of
+informative tool calls stays above the floor of Theorem~\ref{thm:coffee}.
 (P2)~At matched compute, debate improves compute-bound tasks but not
 information-bound ones. (P3)~Redundant or low-capacity tool calls add little,
 even when numerous.
@@ -353,13 +524,13 @@ information, have not been stated before.
 
 \section{Limitations}
 
-The bounds limit information about a fixed external truth. They do not bound
-how much computation closing a reasoning gap takes, which is a question of
-computational complexity, and they do not cover outcomes the agents control
-(A4). Assumption (A1) requires accounting for everything a model absorbed in
-training; a missed side channel invalidates the accounting. Results are for
-finite alphabets; a noiseless continuous-output tool has unbounded capacity.
-Tightness is shown by example, not in general. We report no new experiments;
+Section~\ref{sec:ext} relaxes each assumption, but some gaps remain. Outcomes
+the agents themselves change are not covered. Theorem~\ref{thm:coffee}'s
+equality condition is characterized, but no general algorithm achieves it. The computational bounds are task-specific:
+Theorem~\ref{thm:lower} gives one unconditional and one conditional case, not a
+general formula for the compute a given gap requires. Assumption (A1) requires accounting for everything a model absorbed in
+training, and $\I(\Theta;D_0)$ and $C_t$ are hard to estimate for real models and
+tools; the bounds' value is often structural rather than numerical. We report no new experiments;
 the predictions of Section~\ref{sec:empirical} are untested here.
 
 \section{Conclusion}
@@ -367,7 +538,9 @@ the predictions of Section~\ref{sec:empirical} are untested here.
 A collective of agents can be clever, but it cannot know more than it has
 seen. The Coffee Law bounds what a tool-using collective can learn by its
 starting data plus the capacity of its tool calls; the reasoning ceiling bounds
-what it can use by what it holds. Practically: if the answer is in the data,
+what it can use by what it holds; and reaching that ceiling costs computation
+that only total compute can buy, from linear in the input to beyond any
+efficient collective, depending on the task. Practically: if the answer is in the data,
 add reasoning; if it is not, add better observations of the world. Neither
 substitutes for the other.
 

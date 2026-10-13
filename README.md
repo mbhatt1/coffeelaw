@@ -18,7 +18,9 @@ Underneath sits a second ceiling, **reasoning**:
 `usable knowledge ≤ available information ≤ budget`. More computation (thinking
 longer, more agents, a code interpreter) raises what the collective can *use*,
 up to what it *holds*, never past it
-([Theorem 8](formal_proofs/formal_proofs.md#theorem-8)).
+([Theorem 8](formal_proofs/formal_proofs.md#theorem-8)). Only total compute
+counts, and the compute needed ranges from linear to infeasible depending on the
+task ([Theorems 9–10](formal_proofs/formal_proofs.md#theorem-9)).
 
 **Read it:** <https://mbhatt1.github.io/coffeelaw/>
 
@@ -27,6 +29,8 @@ up to what it *holds*, never past it
   [Theorem 7](formal_proofs/formal_proofs.md#theorem-7); the reasoning ceiling is
   [Theorem 8](formal_proofs/formal_proofs.md#theorem-8)
 - [Paper (IEEE format, PDF)](paper/coffee_law.pdf) — see [`paper/README.md`](paper/README.md) for the target venue
+- [Extensions](formal_proofs/extensions.md) — sandboxes, acting, communication,
+  a changing world, adversaries, continuous truths, and what remains open
 - [Information geometry](formal_proofs/proof.md)
 - [From any agent to LLMs](formal_proofs/llm_specialization.md)
 
@@ -35,6 +39,7 @@ up to what it *holds*, never past it
 ```bash
 cd formal_proofs
 python3 verify.py && python3 verify_llm.py && python3 verify_geometry.py
+python3 verify_extensions.py   # needs numpy
 ```
 
 The checks are exact numerical evaluations of the worked examples plus
