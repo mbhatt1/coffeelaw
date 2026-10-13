@@ -51,7 +51,7 @@ For the short formal version, read the
 |---|---|
 | [Formal proofs](formal_proofs.md) | [Definitions](formal_proofs.md#definitions) and [standard lemmas](formal_proofs.md#lemmas); [conservation](formal_proofs.md#theorem-1); [synergy](formal_proofs.md#theorem-2); [growth](formal_proofs.md#theorem-3); [tools](formal_proofs.md#theorem-4); [routing as value of information](formal_proofs.md#theorem-5); [consensus is not knowledge](formal_proofs.md#theorem-6); [the Coffee Law](formal_proofs.md#theorem-7); [the reasoning ceiling](formal_proofs.md#theorem-8); [computational bounds](formal_proofs.md#theorem-9). |
 | [Information geometry](proof.md) | The same results as the geometry of negative entropy: [KL as a Bregman divergence](proof.md#g1), [information gain as value of information](proof.md#g2), [the Fisher metric](proof.md#g3), [evidence vs. consensus flows](proof.md#g4), and [what is not proven](proof.md#limits). |
-| [Extensions](extensions.md) | Closing the gaps: [exact accounting and when the law is tight](extensions.md#theorem-7-prime), [reasoning that opens channels (sandboxes)](extensions.md#theorem-11), [a worst-case version](extensions.md#theorem-12), [acting](extensions.md#theorem-13), [communication between agents](extensions.md#theorem-14), [a changing world](extensions.md#theorem-15), [adversaries](extensions.md#theorem-16), [continuous quantities](extensions.md#theorem-17), and [what remains open](extensions.md#open). |
+| [Extensions](extensions.md) | Closing the gaps: [exact accounting and when the law is tight](extensions.md#theorem-7-prime), [reasoning that opens channels (sandboxes)](extensions.md#theorem-11), [a worst-case version](extensions.md#theorem-12), [acting](extensions.md#theorem-13), [communication between agents](extensions.md#theorem-14), [a changing world](extensions.md#theorem-15), [adversaries](extensions.md#theorem-16), [continuous quantities](extensions.md#theorem-17), [what a model's weights know](extensions.md#prop-18), and [what remains open](extensions.md#open). |
 | [From any agent to LLMs](llm_specialization.md) | What holds for [any agent](llm_specialization.md#part-a), then LLM-specific costs: [the regret bound](llm_specialization.md#b0), [miscalibration](llm_specialization.md#b1), [lossy messages](llm_specialization.md#b2), [persuasion](llm_specialization.md#b3), and [the combined per-round bound](llm_specialization.md#b4). |
 
 Suggested reading order: the three numbered claims above, then
@@ -69,7 +69,7 @@ the general inequalities are tested on randomized cases.
 | [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) | Every example in the formal proofs, including the tightness of [Theorem 7](formal_proofs.md#theorem-7) |
 | [`verify_llm.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_llm.py) | The LLM-specialization examples and the regret bounds |
 | [`verify_geometry.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_geometry.py) | Lemmas G1–G5 of the geometry notes |
-| [`verify_extensions.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_extensions.py) | Theorems 11–17 of the extensions |
+| [`verify_extensions.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_extensions.py) | Theorems 11–17 and Proposition 18 of the extensions |
 
 ```bash
 git clone https://github.com/mbhatt1/coffeelaw.git

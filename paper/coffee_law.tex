@@ -130,6 +130,14 @@ $\zeta_t\perp(\Theta,D_t,\xi_t,Q_t,O_{t+1})$.
 is independent of $\xi_t$ with law $K_t$; tools may be adaptive or stateful.
 (A4)~\emph{Fixed truth}: actions do not change $\Theta$.
 
+\noindent\textbf{What is random.} For facts about the world, the randomness is
+over possible worlds $W$: a question $X\perp W$ has answer $\Theta=\theta(W,X)$, and
+training is a channel $W\to\text{corpus}\to M$ to the weights $M$. Then
+$\I(\Theta;X,M)\le\I(\Theta;X)+\I(W;M)$ and $\I(W;M)\le\I(W;\text{corpus})$: a model
+knows at most what its training data carried. In one fixed world $M$ is constant,
+$\Theta$ is a function of $X$, and a model's knowledge appears only as usable
+information (Section~\ref{sec:reasoning}).
+
 \noindent\textbf{Capacity.} For a query $q$ and history $d$, $\theta\mapsto
 K_t(\cdot\mid\theta,q,d)$ is a channel with capacity
 $\mathrm{Cap}(K_{t,q,d})=\max_{P_\Theta}\I(\Theta;O)$. Let
@@ -495,8 +503,9 @@ debate's value is computation, equal computation spent another way should do as
 well.
 
 \noindent\textbf{Two apparent tensions.} Debate is also reported to improve
-\emph{factuality}~\cite{du2024}. The facts were in the weights, i.e.\ in $D_0$,
-so debate made stored information usable without adding any. Debate is proved
+\emph{factuality}~\cite{du2024}. In the actual world a factual answer is
+determined by the question, so facts are usable-information problems; debate
+made stored knowledge usable without adding information. Debate is proved
 not to improve expected correctness for Bayesian agents~\cite{choi2025}; such
 agents have an unrestricted $\mathcal V$, so their reasoning gap is zero and
 Theorem~\ref{thm:reasoning} predicts no gain.
@@ -526,7 +535,10 @@ information, have not been stated before.
 
 Section~\ref{sec:ext} relaxes each assumption, but some gaps remain. Outcomes
 the agents themselves change are not covered. Theorem~\ref{thm:coffee}'s
-equality condition is characterized, but no general algorithm achieves it. The computational bounds are task-specific:
+equality condition is characterized, but no general algorithm achieves it. The
+information, compute and communication ceilings hold separately; how to trade
+one for another is open, as is modeling agents' incentives, which the bounds do
+not address. The computational bounds are task-specific:
 Theorem~\ref{thm:lower} gives one unconditional and one conditional case, not a
 general formula for the compute a given gap requires. Assumption (A1) requires accounting for everything a model absorbed in
 training, and $\I(\Theta;D_0)$ and $C_t$ are hard to estimate for real models and

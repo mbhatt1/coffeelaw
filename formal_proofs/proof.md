@@ -8,7 +8,8 @@ the belief simplex, its Bregman divergence, and the two flows it induces
 Throughout, `Θ` is the task-relevant truth on a finite alphabet `𝒳 = {θ_1,…,θ_K}`
 with prior `p(θ)`. `D₀` is everything jointly available to the whole system at
 `t=0`: every agent's private context, the initial board `G₀`, and the frozen
-weights as a fixed prior. `ξ` denotes exogenous randomness (sampling noise,
+weights, which carry information about the world only across possible worlds
+([Proposition 18](extensions.md#prop-18)). `ξ` denotes exogenous randomness (sampling noise,
 scheduling, board rules), independent of `(Θ, D₀)`. Logs are base 2 and
 information is in bits unless written `ln`.
 

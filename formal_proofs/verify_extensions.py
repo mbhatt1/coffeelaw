@@ -192,6 +192,27 @@ for T in range(1, 11):
 ck("I <= T*C and MSE >= 2^(2(h - budget))/(2 pi e) for T = 1..10", ok_b)
 ck("estimation bound is met with equality for the Gaussian", ok_eq)
 
+# ---------------------------------------------------------------------------
+print("Proposition 18  what a model's weights know: possible worlds")
+# World W = two binary facts (F1, F2), uniform. Question X asks fact 1 or fact 2,
+# uniform and independent of W. Answer Theta = F_X. Training corpus reveals F1
+# exactly and nothing about F2; the weights M are the corpus.
+rows = []
+for f1, f2, x in product([0, 1], [0, 1], [1, 2]):
+    th = f1 if x == 1 else f2
+    rows.append(({'W': (f1, f2), 'X': x, 'M': f1, 'Th': th}, 1 / 8))
+I_TXM, I_TX, I_WM = MI(rows, ['Th'], ['X', 'M']), MI(rows, ['Th'], ['X']), MI(rows, ['W'], ['M'])
+ck("over possible worlds: I(Theta; X, M) <= I(Theta; X) + I(W; M)", I_TXM <= I_TX + I_WM + 1e-12,
+   f"{I_TXM:.4f} <= {I_TX:.4f} + {I_WM:.4f}")
+ck("the weights carry information: I(Theta; X, M) > I(Theta; X)", I_TXM > I_TX + 1e-9)
+# One fixed world (F1, F2) = (1, 0): the weights are constant and add nothing,
+# and the question alone determines the answer.
+rows_w = [({'X': x, 'M': 1, 'Th': 1 if x == 1 else 0}, 1 / 2) for x in (1, 2)]
+H_th = 1.0
+ck("fixed world: I(Theta; X, M) = I(Theta; X) = H(Theta)",
+   abs(MI(rows_w, ['Th'], ['X', 'M']) - MI(rows_w, ['Th'], ['X'])) < 1e-12
+   and abs(MI(rows_w, ['Th'], ['X']) - H_th) < 1e-12)
+
 print()
 print("ALL PASSED" if all(res) else "SOME FAILED")
 raise SystemExit(0 if all(res) else 1)

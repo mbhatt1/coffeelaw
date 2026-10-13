@@ -21,6 +21,7 @@ calls, `O_{t+1} ∼ K_t(· | Θ, Q_t, D_t)` the results, `S_t = (D_t, ξ_t, Q_t)
 | The world changes | [Theorem 15](#theorem-15): drift caps knowledge |
 | Adversarial agents | [Theorem 16](#theorem-16): provenance |
 | Continuous quantities | [Theorem 17](#theorem-17): the continuous Coffee Law |
+| What "knowledge in the weights" means | [Proposition 18](#prop-18): possible worlds |
 | What is still open | [Open problems](#open) |
 
 --------------------------------------------------------------------------------
@@ -351,6 +352,59 @@ error at the exchange rate of a factor of 4 per bit. Checked for a Gaussian
 truth observed through Gaussian noise, where the bound holds with equality.
 
 --------------------------------------------------------------------------------
+<a id="prop-18"></a>
+
+## Proposition 18 — What a model's weights know: possible worlds
+
+The theory counts a pretrained model's weights as part of the starting data
+`D₀`. Read literally, that is a puzzle. A trained model's weights are fixed
+numbers, so over a distribution of questions they carry **zero** mutual
+information about anything; and for a factual question ("capital of France?")
+the question alone determines the answer, so all the information is already
+"available". Mutual information needs something random, and for facts about
+the world the right random object is the world itself.
+
+**Setup.** Let `W` be the state of the world, with a prior over the ways things
+could have been. A question `X` is drawn independently of `W`, and its answer is
+`Θ = θ(W, X)`. Training is a channel from the world to the weights: a corpus is
+drawn from `P(· | W)` and the weights `M` are computed from it, so
+`W — corpus — M`, and `M` is independent of `X`.
+
+**Proposition 18.**
+
+(a) *Over possible worlds, weights carry information bounded by the training
+data.*
+
+        I(Θ ; X, M)  ≤  I(Θ ; X)  +  I(W ; M)    and    I(W ; M)  ≤  I(W ; corpus).
+
+So the Coffee Law applies with `D₀ = (X, M)`, and what a model can know about the
+world is bounded by what its training data carried.
+
+(b) *In one fixed world, knowledge is usable information.* If `W` is fixed, then
+`M` is constant, `Θ` is a function of `X`, and
+`I(Θ ; X, M) = I(Θ ; X) = H(Θ)`. Everything is available; the model's knowledge
+shows up only as **usable** information `I_V(X, M → Θ)`
+([Theorem 8](formal_proofs.md#theorem-8)): its ability to compute the answer
+from the question.
+
+*Proof.* (a) Chain rule: `I(Θ ; X, M) = I(Θ ; X) + I(Θ ; M | X)`. Given `X`, `Θ`
+is a function of `W`, so `I(Θ ; M | X) ≤ I(W ; M | X)` by the data-processing
+inequality, and `I(W ; M | X) = I(W ; M)` because `X` is independent of
+`(W, M)`. The second inequality is the data-processing inequality for
+`W — corpus — M`. (b) With `W` fixed, `M` is constant and `Θ = θ(w, X)`. ∎
+
+**Reading.** When a model "knows" a fact, two statements are true at once.
+Across possible worlds, its weights carry information about which world this is,
+at most what its training data carried. Within the actual world, that
+information shows up as the model's ability to compute answers from questions,
+which is usable information, not available information. This is why debate can
+improve factuality ([Theorem 8](formal_proofs.md#theorem-8)): within the actual
+world, the facts are usable-information problems. It is also why a model cannot
+know facts its training data never carried. Checked on a two-fact world in which
+training reveals one fact: the weights add exactly the information about the
+revealed fact, and in a fixed world they add nothing.
+
+--------------------------------------------------------------------------------
 <a id="open"></a>
 
 ## What remains open
@@ -373,6 +427,15 @@ mathematics:
 4. **Lower bounds for LLM-specific losses.** [Part B](llm_specialization.md#part-b)
    bounds the cost of miscalibration and persuasion from above. Showing that a
    given model *must* incur such losses requires measurement, not proof.
-5. **Measuring the inputs.** `I(Θ ; D₀)` for a pretrained model, and `C_t` for
-   real tools, are well defined but hard to estimate. The theory says where
-   they enter, not what they are.
+5. **Measuring the inputs.** `I(W ; M)` for a pretrained model
+   ([Proposition 18](#prop-18)), and `C_t` for real tools, are well defined but
+   hard to estimate. The theory says where they enter, not what they are.
+6. **Trading one ceiling for another.** The information, compute and
+   communication ceilings each hold, so their minimum does too. Results on
+   *trading* them — spending compute to save communication, or tool calls to
+   save reasoning — are open, and they are the practically important question.
+7. **Incentives.** The theory says what agents *can* learn and do, not what they
+   will *try* to do. Reward hacking, persistence on impossible tasks and agents
+   adopting one another's goals concern objectives; modeling them needs game
+   theory or alignment theory on top of these bounds.
+   [Theorem 16](#theorem-16) covers adversaries only in a narrow sense.
