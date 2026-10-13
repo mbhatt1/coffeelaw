@@ -1,9 +1,11 @@
 # Paper: The Coffee Law
 
-`coffee_law.tex` is a 5-page paper (including references) in the IEEE
+`coffee_law.tex` is a 6-page paper (including references) in the IEEE
 conference template, written up from the proofs in
 [`../formal_proofs`](../formal_proofs). The compiled PDF is
-[`coffee_law.pdf`](coffee_law.pdf).
+[`coffee_law.pdf`](coffee_law.pdf). It leads with intuition: each result opens
+with a plain-language explanation, and a running example (an agent team
+debugging a production incident) ties the three ceilings together.
 
 ## Target venue
 
@@ -12,7 +14,9 @@ conference template, written up from the proofs in
 
 - Topics include tool use and multi-agent coordination.
 - Accepted papers are published by IEEE.
-- Short papers: up to 5 pages excluding references, IEEE conference template.
+- Full papers: up to 8 pages excluding references; short papers: up to 5. This
+  paper targets the **full-paper track** (about 5 pages of text). To submit as
+  a short paper instead, move Section VII (Beyond the Assumptions) to the notes.
 - Single-anonymous review, so author names stay on the submission.
 - Deadline: **November 13, 2026** per the ICSE 2027 workshop call. The workshop
   page also shows November 27; confirm on the submission site.
@@ -31,6 +35,9 @@ venues' pages and deadline trackers as of October 2026.
 ## Before submitting
 
 - Fill in the affiliation and email in the author block.
+- Decide on the name: this repository previously hosted a different "Coffee
+  Law" (context-quality power laws). If that work circulated, consider a
+  sentence distinguishing them, or a new name.
 - Read the cited 2025–26 papers in full. The empirical comparisons in
   the "Consistency with Empirical Findings" section are based on their
   abstracts and published summaries.

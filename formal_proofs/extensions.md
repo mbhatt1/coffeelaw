@@ -22,6 +22,8 @@ calls, `O_{t+1} ∼ K_t(· | Θ, Q_t, D_t)` the results, `S_t = (D_t, ξ_t, Q_t)
 | Adversarial agents | [Theorem 16](#theorem-16): provenance |
 | Continuous quantities | [Theorem 17](#theorem-17): the continuous Coffee Law |
 | What "knowledge in the weights" means | [Proposition 18](#prop-18): possible worlds |
+| Where to spend: tools or reasoning? | [Proposition 19](#prop-19): headroom |
+| Can any of this be measured? | [Measuring the quantities](#measuring) |
 | What is still open | [Open problems](#open) |
 
 --------------------------------------------------------------------------------
@@ -405,9 +407,69 @@ training reveals one fact: the weights add exactly the information about the
 revealed fact, and in a fixed world they add nothing.
 
 --------------------------------------------------------------------------------
+<a id="prop-19"></a>
+
+## Proposition 19 — Where to spend: headroom on each lever
+
+The ceilings say how much each kind of spending can possibly buy.
+
+**Proposition 19.** Let `D_T` be the current record and `V` the agents' current
+predictive family.
+
+(a) *Reasoning headroom.* More reasoning on the same record (any larger family
+`V′ ⊇ V`) raises usable information by at most the reasoning gap:
+
+        I_{V′}(D_T → Θ) − I_V(D_T → Θ)  ≤  I(Θ ; D_T) − I_V(D_T → Θ).
+
+(b) *Information headroom.* `T′` more tool rounds raise available information by
+at most
+
+        min( Σ_{t=T}^{T+T′−1} C_t ,  H(Θ) − I(Θ ; D_T) ).
+
+(c) *Both together* raise usable information by at most the reasoning gap plus
+`Σ_t C_t` over the new rounds.
+
+*Proof.* (a) `I_{V′}(D_T → Θ) ≤ I(Θ ; D_T)` by
+[Theorem 8](formal_proofs.md#theorem-8)(a). (b) Exact accounting
+([Theorem 7′](#theorem-7-prime)) bounds each new round by its capacity, and
+`I(Θ ; D) ≤ H(Θ)`. (c) `I_{V′}(D_{T+T′} → Θ) ≤ I(Θ ; D_{T+T′}) ≤ I(Θ ; D_T) + Σ C_t`;
+subtract `I_V(D_T → Θ)`. ∎
+
+**A spending rule.** Each lever's possible return is capped by its headroom.
+Invest in the lever whose headroom per unit cost is larger, and stop investing in
+a lever whose headroom is used up. In the noisy example of
+[Theorem 7](formal_proofs.md#theorem-7), after two calls the reasoning gap for a
+one-look agent is 0.80 bits and the information headroom is 0.94 bits, so both
+levers are open; with a noise-free tool after two calls, information headroom is
+zero and only reasoning can help.
+
+--------------------------------------------------------------------------------
+<a id="measuring"></a>
+
+## Measuring the quantities
+
+The bounds are only as useful as the quantities in them can be estimated.
+
+- **Usable information** is directly estimable. For any predictor a team
+  actually runs, `H(Θ)` minus its held-out log-loss lower-bounds the team's
+  usable information. Xu et al. (ICLR 2020) give PAC-style guarantees for
+  estimating usable information under computational constraints.
+- **Tool capacity** is bounded by the size of the answer space, and for noisy
+  tools by measured error rates. A test that flakes with probability `p` has
+  capacity at most `1 − h(p)`; a tool returning one of `m` answers has at most
+  `log₂ m` bits.
+- **Available information**, and `I(W ; M)` for a pretrained model, are well
+  defined but hard to estimate: they are maxima over all computations. The best
+  usable-information estimate is a lower bound. When no good estimate exists,
+  the theory's value is structural: which levers can help at all.
+
+--------------------------------------------------------------------------------
 <a id="open"></a>
 
 ## What remains open
+
+**Scope note.** None of the proofs inspect the agents, so every result applies
+unchanged to people, programs and mixed human–AI teams.
 
 These gaps are not closed here, and some cannot be closed with current
 mathematics:
@@ -434,7 +496,13 @@ mathematics:
    communication ceilings each hold, so their minimum does too. Results on
    *trading* them — spending compute to save communication, or tool calls to
    save reasoning — are open, and they are the practically important question.
-7. **Incentives.** The theory says what agents *can* learn and do, not what they
+7. **Agents that learn across episodes.** An agent fine-tuned on its own tool
+   results changes its starting data over time. A continual-learning version of
+   the law, which tracks how much each episode's results can add to the
+   weights, is not given here.
+8. **Formal verification.** The proofs are mathematical and checked numerically
+   on finite examples; none is machine-verified (for example in Lean).
+9. **Incentives.** The theory says what agents *can* learn and do, not what they
    will *try* to do. Reward hacking, persistence on impossible tasks and agents
    adopting one another's goals concern objectives; modeling them needs game
    theory or alignment theory on top of these bounds.

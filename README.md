@@ -18,7 +18,10 @@ Underneath sits a second ceiling, **reasoning**:
 `usable knowledge ≤ available information ≤ budget`. More computation (thinking
 longer, more agents, a code interpreter) raises what the collective can *use*,
 up to what it *holds*, never past it
-([Theorem 8](formal_proofs/formal_proofs.md#theorem-8)). Only total compute
+([Theorem 8](formal_proofs/formal_proofs.md#theorem-8)). A third ceiling is
+**communication**: when data is split across agents, no single agent can use it
+until enough has been shared
+([Theorem 14](formal_proofs/extensions.md#theorem-14)). Only total compute
 counts, and the compute needed ranges from linear to infeasible depending on the
 task ([Theorems 9–10](formal_proofs/formal_proofs.md#theorem-9)).
 

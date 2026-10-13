@@ -3,6 +3,9 @@
 *Why a room full of agents can't talk its way to new knowledge, and exactly how
 much its tools can buy.*
 
+By Manish Bhatt · October 2026 ·
+[Paper (PDF)](https://github.com/mbhatt1/coffeelaw/blob/main/paper/coffee_law.pdf)
+
 ---
 
 Multi-agent systems are often pitched with a quiet promise: put enough agents
@@ -20,6 +23,40 @@ kind of agent — LLMs, people, or programs — under four assumptions, listed
 [below](#assumptions). This post explains what it says, why
 it's true, and what it does and doesn't rule out. The full proofs and the
 scripts that check them are in [the formal proofs](formal_proofs.md).
+
+The Coffee Law is one of three ceilings on what a team of agents can do:
+
+1. **Information:** it can't *know* more than its data and tools carry.
+2. **Reasoning:** it can't *use* more than it knows, and using it costs compute.
+3. **Communication:** when data is split across agents, no one can use it until
+   enough of it has been shared.
+
+<figure>
+<svg viewBox="0 0 640 230" width="100%" role="img" aria-label="Three nested bars: usable is at most available, which is at most the budget. Tools raise the budget; reasoning raises usable toward available." style="max-width:640px;font-family:inherit;font-size:14px">
+  <line x1="20" y1="200" x2="610" y2="200" stroke="currentColor"/>
+  <text x="20" y="220" fill="currentColor">0 bits</text>
+  <line x1="580" y1="20" x2="580" y2="200" stroke="currentColor" stroke-dasharray="5,4"/>
+  <text x="580" y="220" text-anchor="middle" fill="currentColor">everything (H)</text>
+  <rect x="20" y="30" width="460" height="34" fill="#4c6ef5" opacity="0.75"/>
+  <text x="28" y="52" fill="#fff">budget: starting data + tool capacity</text>
+  <rect x="20" y="85" width="330" height="34" fill="#3b5bdb" opacity="0.8"/>
+  <text x="28" y="107" fill="#fff">available: what the team holds</text>
+  <rect x="20" y="140" width="160" height="34" fill="#4c6ef5" opacity="0.3"/>
+  <text x="28" y="162" fill="currentColor">usable</text>
+  <line x1="488" y1="47" x2="570" y2="47" stroke="currentColor" stroke-width="2" marker-end="url(#a)"/>
+  <text x="529" y="40" text-anchor="middle" fill="currentColor">tools</text>
+  <line x1="188" y1="157" x2="340" y2="157" stroke="currentColor" stroke-width="2" marker-end="url(#a)"/>
+  <text x="264" y="150" text-anchor="middle" fill="currentColor">reasoning, debate</text>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"/></marker></defs>
+</svg>
+<figcaption><em>The ceilings. What a team can use is at most what it holds, which is at most its budget. Tools raise the budget; reasoning raises what's usable, up to what's held.</em></figcaption>
+</figure>
+
+**A few terms.** *Bits* measure information: one bit settles a yes/no question.
+*Mutual information* is how many bits one thing tells you about another. A
+tool's *capacity* is the most bits a single call can ever reveal; a pass/fail
+test has at most one. *Usable information* is the part of what you hold that
+you can actually turn into answers with the computation you have.
 
 ## Talking moves information around; it doesn't create it
 
@@ -325,6 +362,18 @@ If you're building agent systems, the bound turns into practical advice:
    experiments and held-out tests are what certify that a collective actually
    knows something.
 
+## A third ceiling: talking enough
+
+When different agents hold different pieces, the team as a whole may hold the
+answer while no single agent can use it. Some pieces combine cheaply: if each
+agent only needs to report one summary bit, a short message does it. Others
+don't: for some questions, an agent must receive about half of the other
+agent's data before it knows anything at all, however clever both are
+([Theorem 14](extensions.md#theorem-14)). Experiments find exactly this
+failure: groups of LLM agents that each hold part of the facts reach 30% where
+one agent with all the facts reaches 81%, because they don't seek out what
+others know (Li, Naito and Shirado, ICML 2026).
+
 ## Is this new?
 
 Mostly no, and that's a strength. The ingredients — the chain rule, the
@@ -335,9 +384,14 @@ Choi et al. ([arXiv:2508.17536](https://arxiv.org/abs/2508.17536)), and Yang et
 al. ([arXiv:2602.03794](https://arxiv.org/abs/2602.03794)) give a bound of the
 same shape with agents as the channels. The reasoning ceiling is "usable information"
 in the sense of Xu et al. ([arXiv:2002.10689](https://arxiv.org/abs/2002.10689)), who also show computation can create it.
-What these notes add, as far as we found, is the explicit accounting for tools
-(per-call capacity, adaptive queries, an error floor) and the two ceilings
-combined in one chain.
+Related bounds exist for single settings: Fano-type limits on adversarial queries
+(Kaneko and Baldwin, NeurIPS 2025) and on single-pass multi-hop reasoning
+(Wan et al., ICLR 2026). What these notes add, as far as we found, is the
+explicit accounting for tools in agent teams (per-call capacity, adaptive
+queries, an error floor), the three ceilings combined, and a channel account of
+sandboxing. The [paper](https://github.com/mbhatt1/coffeelaw/blob/main/paper/coffee_law.pdf)
+lists twelve published findings the theory explains, and one prediction
+nobody has tested yet.
 
 The published experiments line up with both ceilings. On closed-book knowledge
 questions, giving reasoning models more thinking time doesn't reliably help and
