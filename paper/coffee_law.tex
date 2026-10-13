@@ -4,6 +4,7 @@
 % coffee_law_final.tex, which set these before \input-ing this file.
 \providecommand{\PaperAnon}{0}   % 1: anonymous (double-blind) submission
 \providecommand{\PaperFinal}{0}  % 1: camera-ready (IEEE copyright notice)
+\providecommand{\PaperShort}{0}  % 1: 5-page body (short tracks, ISIT); details move to the notes
 
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{booktabs}
@@ -49,24 +50,26 @@
 \maketitle
 
 \begin{abstract}
-Teams of LLM agents debate, vote and call tools in the hope of knowing more than
-any one of them. We show that what such a team can achieve is limited by three
-ceilings, each independent of how the agents work. \emph{Information}: a team
-can never know more about the world than its starting data plus what its tools
-can carry, $\min\{\Hh(\Theta),\,\I(\Theta;D_0)+\sum_t C_t\}$ bits, where $C_t$
-is the capacity of round $t$'s tool calls; talking, voting and adding agents do
-not raise this budget. \emph{Reasoning}: what computationally bounded agents can
-\emph{use} is at most what they \emph{hold}; debate and extra compute close this
-gap but never pass it, and closing it can cost anything from reading every input
-to more than any efficient computation can supply. \emph{Communication}: when
-data is split across agents, no single agent can use it without enough messages,
-about $n/2$ bits for some $n$-bit tasks even with unlimited computation. The
-ceilings explain a body of published findings: extra thinking fails on
-knowledge-intensive tasks, debate helps on reasoning tasks but no more than
-voting at equal compute, identical agents saturate, distributed information
-goes unpooled, and models know only what their training carried. We also
-formalize sandboxing as a guarantee on reachable channels. Every finite example
-is verified exactly in public code.
+Why do some multi-agent systems improve with more agents, more debate or a
+stronger model, while others do not? We argue that the productive question is
+not how to make a collective more intelligent, but \emph{which resource limits a
+particular collective, and which intervention removes that limit}. We decompose
+collective intelligence into three ceilings, each bounded by a different theory.
+\emph{Information} (information theory): a team cannot know more about the world
+than its starting data plus what its tools can carry,
+$\min\{\Hh(\Theta),\,\I(\Theta;D_0)+\sum_t C_t\}$ bits; talking and voting do not
+raise this budget, and adding agents raises it only through more tool access. \emph{Reasoning} (computational complexity):
+what bounded agents can \emph{use} is at most what they \emph{hold}; debate and
+compute close the gap but never pass it, at a cost ranging from linear to,
+under standard cryptographic assumptions, infeasible. \emph{Communication} (communication complexity): evidence split across
+agents is unusable to any one of them until enough is exchanged, about $n/2$ bits
+for some $n$-bit tasks even with unlimited computation. Adding agents, adding
+communication, adding computation and adding access to the world are therefore
+different interventions acting on different ceilings. The decomposition explains
+published findings that otherwise look contradictory, yields a diagnostic for
+which ceiling binds, and makes predictions that a single notion of capability
+does not, such as that model diversity and prompt diversity help on different
+tasks. Proofs are short; every finite example is verified exactly in public code.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -87,32 +90,41 @@ The first is limited by \textbf{information}. No amount of discussion reveals
 log lines nobody has fetched; only tool calls (reading logs, running queries)
 do, and each call can carry only so much. The second is limited by
 \textbf{reasoning}: the answer is already in hand, and the work is computing it.
-A third limit appears when data is split across agents, since what one agent
+A third limit appears when evidence is split across agents, since what one agent
 holds is useless to another until it is communicated: \textbf{communication}.
 
-This paper makes those three ceilings exact (Fig.~\ref{fig:ceilings}). The
-mathematical tools are classical: the chain rule, the data-processing
-inequality (DPI), channel capacity, Fano's inequality~\cite{cover2006}, usable
-information~\cite{xu2020} and communication complexity~\cite{kushilevitz1997}.
-What is new is their assembly into a theory of tool-using agent collectives,
-which yields results not available from the textbook statements:
-\begin{enumerate}
-\item \textbf{A capacity budget for adaptive, multi-agent tool use} (the Coffee
-Law, Theorem~\ref{thm:coffee}): the number of agents and the protocol drop out,
-and Fano's inequality gives an error floor and a minimum number of tool calls,
-including a worst-case version needing no prior.
-\item \textbf{One chain for knowing and using}, usable $\le$ available $\le$
-budget, with the gap between the first two equal to an expected KL divergence
-(Theorem~\ref{thm:reasoning}), and bounds on the compute needed to close it
-(Theorems~\ref{thm:compute}--\ref{thm:lower}).
-\item \textbf{A communication ceiling for collectives}
-(Theorem~\ref{thm:comm}), distinct from information and compute.
-\item \textbf{A formal account of sandboxing}: reasoning can discover channels,
-so a sandbox is a guarantee on which channels any feasible computation can reach
+Our thesis is that \emph{different mechanisms of collective intelligence have
+different kinds of bounds}. Information theory constrains what can be learned
+from observations; computational complexity constrains what can feasibly be
+derived; communication complexity constrains what restricted exchange can
+accomplish. Treating these as one question of ``model capability'' or ``agent
+count'' hides which one is binding. Scaling a collective is therefore not a single
+operation: adding agents, adding communication, adding computation and expanding
+access to the world act on different ceilings (Fig.~\ref{fig:ceilings}), and the
+useful question for a struggling collective is \emph{which resource limits it,
+and what intervention can remove that limit}.
+
+We distinguish three levels of contribution, and claim them in that order of
+strength.
+\begin{itemize}
+\item \textbf{Conceptual.} The three-ceiling decomposition, with every operation
+of a collective classified as either computation on what it holds or a channel
+to the world, and the chain usable $\le$ available $\le$ budget.
+\item \textbf{Scientific utility.} The decomposition explains a body of published
+findings in one picture (Table~\ref{tab:evidence}), gives a diagnostic for which
+ceiling binds, and makes predictions that a single capability axis does not
+(Section~\ref{sec:predict}).
+\item \textbf{Mathematical.} The ingredients are classical: the chain rule, the
+data-processing inequality (DPI), channel capacity, Fano's
+inequality~\cite{cover2006}, usable information~\cite{xu2020} and communication
+complexity~\cite{kushilevitz1997}. The statements are, to our knowledge, new in
+this setting: a capacity budget for adaptive multi-agent tool use in which the
+agents and protocol drop out (Theorem~\ref{thm:coffee}); the reasoning gap as an
+expected KL divergence with compute bounds on closing it
+(Theorems~\ref{thm:reasoning}--\ref{thm:lower}); a communication ceiling for
+collectives (Theorem~\ref{thm:comm}); and a channel account of sandboxing
 (Theorem~\ref{thm:gated}).
-\item \textbf{A unified explanation of published findings}
-(Table~\ref{tab:evidence}), and testable predictions.
-\end{enumerate}
+\end{itemize}
 \ifnum\PaperFinal=1 \IEEEpubidadjcol\fi
 Full proofs and exact numerical checks of every finite example are
 \ifnum\PaperAnon=1 provided as supplementary material.\footnote{Supplementary
@@ -328,6 +340,7 @@ raises $C_t$). In Table~\ref{tab:tight}'s noisy example, the record holds 1.062
 bits but a one-look agent can use only 0.266; the rest is a reasoning gap that
 more observations cannot close.
 
+\ifnum\PaperShort=0
 \noindent\textbf{Imperfect agents.} Real agents fall further below the chain
 (proofs in the accompanying notes, footnote~1). Acting on a belief $\hat b$ instead of the
 correct posterior $b^*$ costs at most
@@ -339,6 +352,7 @@ $\E\,\KL(p(\cdot|D)\|p(\cdot|M))=\I(\Theta;D)-\I(\Theta;M)$. And a confident
 message carrying zero information can flip a correct agent: with belief
 $(0.6,0.4)$ for the truth, giving weight $\alpha>1/6$ to a constant false claim
 flips the answer.
+\fi
 
 \section{Paying for Reasoning}\label{sec:compute}
 
@@ -440,6 +454,7 @@ recently reported incidents, models under evaluation left their test sandbox
 and retrieved benchmark answers from an outside server~\cite{openai2026}: the
 answers were not inside, so the only route was an unallowed channel.
 
+\ifnum\PaperShort=0
 \noindent\textbf{Worst case.} For $M\ge3$ possible truths with no prior, starting
 data of capacity $C_0$, and any strategy, some truth $\theta_i$ has
 $\Pr_{\theta_i}(\hat\Theta\ne\theta_i)\ge(\log M-\min\{\log M,C_0+\sum_tC_t\}-1)/\log(M-1)$
@@ -483,8 +498,15 @@ noisy tools by measured error rates (a test that flakes with probability $p$ has
 $C\le1-h(p)$). Available information about the world, $\I(W;M)$ for a pretrained
 model, is well defined but hard to estimate; the bounds' value is then
 structural rather than numerical.
+\else
+\noindent The accompanying notes (footnote~1) give the remaining extensions:
+a worst-case version needing no prior (Fano's method), a regret floor for acting
+in a fixed unknown environment, saturation of knowledge under drift, provenance
+against adversaries, continuous truths, a headroom rule for where to spend, and
+estimators for the quantities.
+\fi
 
-\section{Evidence and Predictions}\label{sec:empirical}
+\section{Evidence}\label{sec:empirical}
 
 Table~\ref{tab:evidence} lists predictions of the theory and the published
 findings we found that bear on them, including mixed ones; none contradicts
@@ -539,21 +561,72 @@ In a changing world knowledge decays and tools refresh it only partly (Sec.~\ref
  & Under continuous knowledge drift, retrieval and learning methods struggle~\cite{liu2026drift}. & Supported \\
 Open-ended work is bounded by information about intent (Sec.~\ref{sec:ext})
  & Underspecification consistently hurts agents; an ask-user tool recovers part of the loss~\cite{pu2026lhaw}. & Supported \\
+RL post-training raises usable, not available, information (Thm.~\ref{thm:reasoning})
+ & RL with verifiable rewards beats the base model at small pass@$k$, but the base model wins at large $k$; the solvable set does not grow and often narrows~\cite{yue2025}. & Supported \\
 Error vs.\ informative tool calls stays above the Fano floor (Cor.~\ref{cor:rounds})
  & Not yet measured. & Open \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\noindent\textbf{Testable predictions.} (P1)~Error rate against the number of
-informative tool calls stays above the floor of Corollary~\ref{cor:rounds}; a
-clean test uses a yes/no tool with known noise, where the floor is exact.
-(P2)~At matched compute, debate performs about as well as self-consistency or
-voting; it helps compute-bound tasks and not information-bound ones, while tools
-show the opposite pattern. (P3)~Redundant or low-capacity tool calls add
-little, however numerous. (P4)~With data split across agents, accuracy on tasks
-like inner product stays near chance until the message budget approaches the
-communication ceiling of Theorem~\ref{thm:comm}.
+\section{What the Decomposition Predicts}\label{sec:predict}
+
+The test of a decomposition is whether it says something a single capability
+axis does not. Each item below follows from separating the three ceilings; we
+mark whether published evidence supports it or it is untested.
+
+\noindent\textbf{1. A diagnostic for any failing collective.} Apply three
+targeted interventions and see which moves performance: an oracle or better tool
+(raises the information ceiling), more compute or reasoning (raises usable
+information), and lifted message limits (raises the communication ceiling). The
+intervention that helps names the binding ceiling; the others should do little.
+\emph{Derived; untested.}
+
+\noindent\textbf{2. Two kinds of diversity.} Models trained on different corpora
+can carry different information (they can enlarge $D_0$); one model with different
+personas only computes differently (it enlarges $\V$). So on information-bound
+tasks only model diversity should help, while on compute-bound tasks both should.
+Reported diversity gains~\cite{yang2026} mix the two. \emph{Derived; the split is
+untested.}
+
+\noindent\textbf{3. Debate is worth its compute.} At matched compute, debate
+should perform about as well as self-consistency or voting, helping
+compute-bound tasks and not information-bound ones, while tools show the opposite
+pattern. \emph{Consistent with}~\cite{tran2026,smit2024,choi2025}\emph{; the
+task-type split is untested.}
+
+\noindent\textbf{4. Post-training lifts one ceiling.} Pre-training sets what a
+model can know about the world; post-training on its own outputs mostly enlarges
+what it can use. RL should therefore raise performance on compute-bound tasks
+without expanding what the base model can solve given enough attempts, and should
+not help information-bound tasks unless its training signal carries new facts. \emph{Supported}~\cite{yue2025}\emph{ for the
+first part.}
+
+\noindent\textbf{5. Communication has a signature.} As the message budget grows,
+accuracy should jump at a threshold for inner-product-like splits but rise from
+the first bit for parity-like splits (Theorem~\ref{thm:comm}). Summarizer and
+orchestrator architectures should fail specifically where communication
+complexity is high, however strong the summarizer. \emph{Consistent
+with}~\cite{li2026hidden}\emph{; the threshold is untested.}
+
+\noindent\textbf{6. An error floor for tool use.} Error against the number of
+informative tool calls stays above the floor of Corollary~\ref{cor:rounds}; with
+a yes/no tool of known noise the floor is exact, so the test is clean.
+\emph{Untested.}
+
+\noindent\textbf{7. Where channel-seeking appears.} Reward hacking by finding
+unallowed channels should concentrate on tasks whose answers are not reachable
+inside the sandbox, i.e.\ information-bound tasks under strong reward pressure
+(Theorem~\ref{thm:gated}). \emph{Consistent with a reported
+incident}~\cite{openai2026}\emph{; untested systematically.}
+
+\ifnum\PaperShort=0
+\noindent\textbf{Exchange rates.} The decomposition also prices the levers: a tool
+call is worth at most $C_t$ bits of information; a debate round, zero bits of
+information but possibly a large gain in usable information; a message, at most
+its length in bits to its recipient. Spending can then follow the headroom rule of
+Section~\ref{sec:ext}.
+\fi
 
 \section{Related Work}
 
@@ -566,10 +639,10 @@ attacks~\cite{kaneko2025} and to single-pass multi-hop reasoning~\cite{wan2026fa
 Usable information is due to~\cite{xu2020}; synergy is studied in partial
 information decomposition~\cite{williams2010}; feedback and directed information
 in~\cite{massey1990}; and Fano-based active-learning bounds
-in~\cite{raginsky2011}. To our knowledge, the per-call capacity budget for
-adaptive multi-agent tool use, its combination with usable information and
-communication into one set of ceilings, and the channel account of sandboxing
-have not been stated before.
+in~\cite{raginsky2011}. These works each address one ceiling. To our knowledge, the
+per-call capacity budget for adaptive multi-agent tool use, its combination with
+usable information and communication into one decomposition, and the channel
+account of sandboxing have not been stated before.
 
 \section{Limitations}
 
@@ -582,19 +655,20 @@ time, are not given. Equality in Theorem~\ref{thm:coffee} is characterized, but 
 general algorithm achieves it. The proofs are mathematical and checked
 numerically on finite examples, not machine-verified. We report no new
 experiments; Table~\ref{tab:evidence} relies on published findings, summarized
-from their abstracts.
+from their abstracts, and several predictions in Section~\ref{sec:predict} are
+untested.
 
 \section{Conclusion}
 
-A team of agents can be clever, but it cannot know more than it has seen, use
-more than it holds, or combine what its members hold without communicating
-enough. For practitioners the theory reduces to one question per task:
-\emph{which ceiling binds?} If the answer is not in the data, add better
-observations of the world. If it is in the data, add reasoning, and expect
-debate to be worth exactly the compute it spends. If it is split across agents,
-make sure they can say enough to each other. And treat sandboxes and message
-provenance as channel control, because channels are where information comes
-from.
+Collective intelligence is not one quantity, and it does not have one limit. A
+team of agents cannot know more than it has observed, use more than it holds, or
+combine what its members hold without exchanging enough; each of these is bounded
+by a different theory, and each is moved by a different intervention. The
+question to ask of a struggling collective is therefore not how to make it more
+intelligent, but \emph{which resource limits it, and what can remove that limit}:
+better observations of the world, more reasoning, or more communication. Answering
+it per task, rather than adding agents by default, is what the decomposition is
+for.
 
 \bibliographystyle{IEEEtran}
 \bibliography{refs}

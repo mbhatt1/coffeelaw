@@ -7,16 +7,44 @@ Checker: `check_paper.py`; numbers registry: `numbers.json`.
 
 | Version | File | Pages (body / total) | Limit used | Blocking issues |
 |---|---|---|---|---|
-| Main (AGENT 2027, named) | `coffee_law.pdf` | 5 / 6 | 5 excl. references | 1: affiliation and email placeholders (author decision) |
-| Anonymous (double-blind, e.g. ISIT) | `coffee_law_anon.pdf` | 5 / 6, page 6 references only | 5 + references-only page | **0** |
-| Camera-ready (copyright notice) | `coffee_law_final.pdf` | 5 / 6 | 5 excl. references | 1: affiliation and email placeholders (author decision) |
+| Full (AGENT 2027 full track, named) | `coffee_law.pdf` | 6 / 7 | 8 excl. references | 1: affiliation and email placeholders (author decision) |
+| Short (AGENT 2027 short track, named) | `coffee_law_short.pdf` | 5 / 6 | 5 excl. references | 1: affiliation and email placeholders (author decision) |
+| Anonymous short (double-blind, e.g. ISIT) | `coffee_law_anon.pdf` | 5 / 6, page 6 references only | 5 + references-only page | **0** |
+| Camera-ready (full, copyright notice) | `coffee_law_final.pdf` | 6 / 7 | 8 excl. references | 1: affiliation and email placeholders (author decision) |
 
 - All fonts embedded and subsetted, Type 1 only (IEEE PDF eXpress requirement).
 - US letter, no overfull boxes, no undefined references or citations.
 - All 7 numbers in the registry match the output of the check scripts.
-- The body fits within 5 pages, so the main version qualifies for the AGENT
-  short-paper track (5 pages excluding references) as well as the full-paper
-  track (8); no separate short cut is needed.
+- Short versions move the detailed extensions, the imperfect-agents paragraph
+  and the exchange-rates paragraph to the notes, with a pointer in their place.
+
+## Revision 2: the decomposition as the thesis
+
+The paper now leads with the claim that different mechanisms of collective
+intelligence have different kinds of bounds, and with the question "which
+resource limits this collective, and what intervention removes that limit?"
+
+- **Abstract** rewritten around the thesis and the three theories (information,
+  computational and communication complexity).
+- **Introduction**: new thesis paragraph; contributions restated at three levels
+  (conceptual, scientific utility, mathematical), claimed in that order.
+- **New Section IX, "What the Decomposition Predicts"**: seven predictions that
+  a single capability axis does not make, each marked supported, consistent or
+  untested: a diagnostic by targeted intervention; model vs prompt diversity;
+  debate at matched compute; post-training lifting one ceiling; the
+  communication signature; the tool-use error floor; where channel-seeking
+  appears; plus exchange rates between levers. The old "testable predictions"
+  paragraph is folded in.
+- **New evidence row and citation**: Yue et al. (NeurIPS 2025, verified) on RL
+  with verifiable rewards — better at small pass@k, base model better at large
+  k — supporting prediction 4.
+- **Related work** positions the earlier papers as each addressing one ceiling.
+- **Conclusion** rewritten around the reframed question.
+- **Claim audit of the new text** caught four overclaims, all fixed: "adding
+  agents does not raise the budget" (it does through more tool access);
+  "infeasible" (conditional on cryptographic assumptions); different corpora
+  "carry" different information ("can carry"); post-training "should not help
+  information-bound tasks" ("unless its training signal carries new facts").
 
 ## Fixed
 
@@ -99,8 +127,8 @@ Checker: `check_paper.py`; numbers registry: `numbers.json`.
 1. Affiliation and email (the only blocking item for the named versions).
 2. Name: this repository previously hosted a different "Coffee Law"; decide
    whether to distinguish them in the paper or rename.
-3. Venue and track: AGENT 2027 full or short track (both fit), or ISIT (use the
-   anonymous version).
+3. Venue and track: AGENT 2027 full track (`coffee_law.pdf`) or short track
+   (`coffee_law_short.pdf`), or ISIT (`coffee_law_anon.pdf`).
 4. Copyright line: replace the `979-8-XXXX…` placeholder with the conference's
    exact text at camera-ready time.
 5. Supplementary material for the anonymous version: an anonymized copy of the
