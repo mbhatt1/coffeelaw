@@ -25,18 +25,28 @@ about the environment. These notes prove it in three steps:
    ([Theorem 7](formal_proofs.md#theorem-7)). Claim 1 is the Coffee Law with no
    tools.
 
+A second ceiling sits underneath: **reasoning**. What agents can *use* is at
+most what they *hold*, and only computation closes the gap
+([Theorem 8](formal_proofs.md#theorem-8)):
+
+        usable knowledge  ≤  available information  ≤  starting data + tool capacity
+
+Debate and more agents can raise usable knowledge, never available information.
+
 None of this inspects the agents, so it applies to any learner. It bounds what
-can be *learned* about a fixed truth, not what can be *computed* from what is
-already known, and not outcomes the agents themselves control.
+can be *learned* about a fixed truth and what can be *used* of it, not how much
+computation the using takes, and not outcomes the agents themselves control.
 
 **New here? Start with the blog post:
 [Agent collectives have bounds](agent-collectives-have-bounds.md).**
+For the short formal version, read the
+[paper (PDF)](https://github.com/mbhatt1/coffeelaw/blob/main/paper/coffee_law.pdf).
 
 ## Documents
 
 | Document | What it covers |
 |---|---|
-| [Formal proofs](formal_proofs.md) | [Definitions](formal_proofs.md#definitions) and [standard lemmas](formal_proofs.md#lemmas); [conservation](formal_proofs.md#theorem-1); [synergy](formal_proofs.md#theorem-2); [growth](formal_proofs.md#theorem-3); [tools](formal_proofs.md#theorem-4); [routing as value of information](formal_proofs.md#theorem-5); [consensus is not knowledge](formal_proofs.md#theorem-6); [the Coffee Law](formal_proofs.md#theorem-7). |
+| [Formal proofs](formal_proofs.md) | [Definitions](formal_proofs.md#definitions) and [standard lemmas](formal_proofs.md#lemmas); [conservation](formal_proofs.md#theorem-1); [synergy](formal_proofs.md#theorem-2); [growth](formal_proofs.md#theorem-3); [tools](formal_proofs.md#theorem-4); [routing as value of information](formal_proofs.md#theorem-5); [consensus is not knowledge](formal_proofs.md#theorem-6); [the Coffee Law](formal_proofs.md#theorem-7); [the reasoning ceiling](formal_proofs.md#theorem-8). |
 | [Information geometry](proof.md) | The same results as the geometry of negative entropy: [KL as a Bregman divergence](proof.md#g1), [information gain as value of information](proof.md#g2), [the Fisher metric](proof.md#g3), [evidence vs. consensus flows](proof.md#g4), and [what is not proven](proof.md#limits). |
 | [From any agent to LLMs](llm_specialization.md) | What holds for [any agent](llm_specialization.md#part-a), then LLM-specific costs: [the regret bound](llm_specialization.md#b0), [miscalibration](llm_specialization.md#b1), [lossy messages](llm_specialization.md#b2), [persuasion](llm_specialization.md#b3), and [the combined per-round bound](llm_specialization.md#b4). |
 
@@ -74,10 +84,14 @@ Choi et al., *Debate or Vote* ([arXiv:2508.17536](https://arxiv.org/abs/2508.175
 Yang et al., *Understanding Agent Scaling in LLM-Based Multi-Agent Systems via
 Diversity* ([arXiv:2602.03794](https://arxiv.org/abs/2602.03794)) gives a bound
 of the same "min(H, Σ channels)" shape with agents as the channels. The
+reasoning ceiling is usable ("V-") information in the sense of Xu et al.
+([arXiv:2002.10689](https://arxiv.org/abs/2002.10689)). Published experiments match both regimes: extra test-time compute
+doesn't reliably help on closed-book knowledge tasks ([arXiv:2509.06861](https://arxiv.org/abs/2509.06861)), debate helps on
+math and strategy (Du et al., [arXiv:2305.14325](https://arxiv.org/abs/2305.14325)), and debate does about as well as
+self-consistency or voting at equal effort (Smit et al., [PMLR 235](https://proceedings.mlr.press/v235/smit24a.html)). The
 mathematical ingredients — the chain rule, the data-processing inequality,
 channel capacity and Fano's inequality — are textbook (Cover & Thomas,
-*Elements of Information Theory*). See the
-[related-work note](formal_proofs.md#theorem-7) for the comparison and its
-caveats.
+*Elements of Information Theory*). See the related-work notes under [Theorem 7](formal_proofs.md#theorem-7)
+and [Theorem 8](formal_proofs.md#theorem-8) for the comparison and its caveats.
 
 [Source on GitHub](https://github.com/mbhatt1/coffeelaw/tree/main/formal_proofs)

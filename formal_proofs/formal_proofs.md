@@ -300,7 +300,9 @@ function of `D_T` and independent noise ([Lemma 1.4](#lemmas)). For any estimato
 routing ([Theorem 5](#theorem-5)), debate, voting and the number of agents `N` do not appear
 in `B_T`. More agents raise the budget only by issuing more or better tool calls
 per round, i.e. by raising `C_t`. Everything else a collective does, however
-"emergent," spends a budget of at most `B_T` and cannot enlarge it. ∎
+"emergent," spends a budget of at most `B_T` and cannot enlarge it. What these
+activities *can* change is how much of the budget is usable; see
+[Theorem 8](#theorem-8). ∎
 
 **Tightness.** The bound is attained. Let `Θ` be uniform on `{0,1,2,3}`, let a
 call `q ∈ {0,1}` return bit `q` of `Θ` through a binary symmetric channel with
@@ -333,14 +335,150 @@ multi-agent performance by the task uncertainty `H(Y|X)` and a sum of
 per-agent-channel informations, the same "min(H, Σ channels)" shape with agents
 as the channels. The ingredients are classical: the chain rule and DPI (Cover &
 Thomas, ch. 2), channel capacity, and Fano's inequality as used for minimax and
-active-learning lower bounds (e.g. Raginsky & Rakhlin, 2011). *These
-references have not yet been read in full; the exact theorem statements need
-checking before relying on the comparison.*
+active-learning lower bounds (e.g. Raginsky & Rakhlin, 2011). As far as we
+found, the per-call capacity accounting with adaptive queries and the Fano
+floor for tool-using collectives are not stated in this literature. *The
+comparisons with the 2025–26 preprints are based on their abstracts and
+published summaries, not full readings.*
+
+<a id="theorem-8"></a>
+
+## 9. Theorem 8 — The reasoning ceiling (usable ≤ available ≤ budget)
+
+The Coffee Law bounds the information a collective **holds**. Holding
+information is not the same as being able to **use** it: the factors of a
+number `N` are fully determined by `N`, yet finding them can take enormous
+computation. Theorem 8 adds this second ceiling.
+
+**Setup.** A *predictive family* `V` is a set of predictors `f`, each mapping a
+record `d` to a distribution `f[d]` on `Θ`. It models what the agents can
+compute within their reasoning budget (time, model size, number of agents). We
+assume:
+
+- (V0) `V` contains the constant prior predictor `f[d] = p_Θ` (agents can always
+  ignore the record).
+
+Define the **conditional V-entropy** and the **usable information**
+
+        H_V(Θ | D)  :=  inf_{f ∈ V}  E[ −log f[D](Θ) ],
+        I_V(D → Θ)  :=  H(Θ) − H_V(Θ | D).
+
+`I_V` is the reduction in log-loss about `Θ` that agents limited to `V` can
+actually achieve from `D`. When `V` contains every predictor, it is the ordinary
+mutual information.
+
+**Theorem 8 (reasoning ceiling).**
+
+(a) *Usable ≤ available.* `0 ≤ I_V(D → Θ) ≤ I(Θ ; D)`, and the gap is the
+**reasoning gap**
+
+        I(Θ ; D) − I_V(D → Θ)  =  inf_{f ∈ V}  E_D[ KL( p(· | D) ‖ f[D] ) ],
+
+which is zero iff predictors in `V` come arbitrarily close to the Bayesian
+posterior.
+
+(b) *The full chain.* For the collective's record `D_T` (setup of
+[Theorem 7](#theorem-7)),
+
+        I_V(D_T → Θ)  ≤  I(Θ ; D_T)  ≤  min( H(Θ), I(Θ ; D₀) + Σ_{t<T} C_t ).
+
+Reasoning (a richer `V`, i.e. more computation) raises the left term toward the
+middle one. Tools and starting data raise the right one. Nothing raises the left
+term past the right.
+
+(c) *Reasoning can raise usable information; it cannot raise available
+information.* Usable information has no data-processing inequality: there are a
+family `V` and a deterministic computation `g` with
+
+        I(Θ ; g(D)) = I(Θ ; D)    but    I_V(g(D) → Θ) > I_V(D → Θ).
+
+For every `g`, however, `I_V(g(D) → Θ) ≤ I(Θ ; g(D)) ≤ I(Θ ; D)`.
+
+*Proof.*
+(a) Lower bound: by (V0), `H_V(Θ|D) ≤ E[−log p_Θ(Θ)] = H(Θ)`. Upper bound and
+gap: for any `f ∈ V`, the cross-entropy identity gives
+`E[−log f[D](Θ)] = H(Θ|D) + E_D[KL(p(·|D) ‖ f[D])]`. Take the infimum over
+`f`: `H_V(Θ|D) = H(Θ|D) + inf_f E_D KL(…) ≥ H(Θ|D)`. Subtract both sides from
+`H(Θ)`, using `I(Θ;D) = H(Θ) − H(Θ|D)`. The gap is zero iff the infimum of the
+expected KL is zero.
+(b) Part (a) applied to `D_T`, then [Theorem 7](#theorem-7).
+(c) The last inequality is part (a) followed by DPI ([Lemma 1.4](#lemmas)) for
+the deterministic `g`. For the strict example, take the XOR setting of
+[Theorem 2](#theorem-2): `D = (B₁, B₂)`, `Θ = B₁ ⊕ B₂`, and let `V_one` be the
+"one-look" family of predictors that read a single coordinate of the record
+(any map from that coordinate to a distribution) or nothing. Each coordinate of
+`D` is independent of `Θ`, so `H_{V_one}(Θ|D) = H(Θ) = 1` and
+`I_{V_one}(D → Θ) = 0`. One reasoning step `g(D) = (B₁ ⊕ B₂, B₂)` makes the
+first coordinate equal `Θ`, so `I_{V_one}(g(D) → Θ) = 1`, while
+`I(Θ; g(D)) = I(Θ; D) = 1`. Machine-checked in
+[`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py),
+Scenario 8. ∎
+
+**Corollary 8.1 (debate adds reasoning, not facts).** In a closed collective,
+every board post is a function of `D₀` and truth-independent noise, so it adds no
+available information ([Theorem 1](#theorem-1)). It *can* add usable
+information: an agent that posts an intermediate result (`B₁ ⊕ B₂` above) hands
+the others a computation they could not do in one look. Debate, critique and
+more agents are therefore worth exactly their reasoning gain, and that gain is
+capped by the available information. ∎
+
+**Two regimes.** A task is **information-bound** when the Coffee Law is the
+binding constraint (`I(Θ;D_T)` is well below `H(Θ)`): forecasting, facts about
+the world, diagnosing a live system. Only tools and better starting data help.
+A task is **compute-bound** when the information is present but the reasoning
+gap is large: mathematics, proofs, code, planning from known facts. More
+reasoning helps. Most real tasks mix both, and Theorem 8(b) says which term to
+work on. The same tool can sit on either side: a code interpreter running on
+data the collective already holds is reasoning (it enlarges `V`); a tool that
+observes the world is an information channel (it raises `C_t`).
+
+**Worked numbers (Scenario 8).** In the noisy two-call example of
+[Theorem 7](#theorem-7), the record holds 1.0620 bits about `Θ` (the full
+budget), but a one-look agent can use only 0.2655 bits of it. The remaining
+0.7965 bits are a reasoning gap: closing it takes computation, not more
+observations of the world.
+
+**What Theorem 8 does not give.** It says reasoning can close the gap and never
+overshoot. It does not say how much computation a given gap needs; that is a
+question of computational complexity, and for problems like factoring large
+numbers no efficient classical method is known.
+
+**Related work.** Usable information under computational constraints is
+"predictive V-information" in Xu, Zhao, Song, Stewart and Ermon, *A Theory of
+Usable Information under Computational Constraints* (ICLR 2020, [arXiv:2002.10689](https://arxiv.org/abs/2002.10689)). That
+paper shows V-information reduces to mutual information without constraints and,
+unlike mutual information, can be created by computation, in violation of the
+data-processing inequality: part (c) above. Our definition follows the same
+idea but uses the true entropy `H(Θ)` as the baseline under assumption (V0),
+where theirs uses the family's own no-input entropy.
+
+**Empirical consistency.** The two regimes match published results:
+- *Information-bound:* *Test-Time Scaling in Reasoning Models Is Not Effective
+  for Knowledge-Intensive Tasks Yet* ([arXiv:2509.06861](https://arxiv.org/abs/2509.06861)) finds, across 14 reasoning models
+  on closed-book knowledge tasks, that more test-time compute does not reliably
+  raise accuracy and often increases hallucination, and argues that
+  compute-only scaling of a fixed model cannot add information about the answer.
+- *Compute-bound:* Du et al., *Improving Factuality and Reasoning in Language
+  Models through Multiagent Debate* (ICML 2024, [arXiv:2305.14325](https://arxiv.org/abs/2305.14325)) report that debate
+  improves mathematical and strategic reasoning.
+- *Debate is worth its reasoning gain (Corollary 8.1):* Smit et al., *Should we
+  be going MAD?* (ICML 2024, [PMLR 235](https://proceedings.mlr.press/v235/smit24a.html)) find that debate does not reliably beat
+  self-consistency or ensembling, at higher cost; Choi et al. (arXiv:2508.17536)
+  attribute most debate gains to majority voting. If debate's value is
+  computation, equal computation spent another way should do as well.
+
+Two results look like tensions but fit. Du et al. also report better
+*factuality* from debate; the facts were in the model's weights, i.e. in `D₀`,
+so debate made stored information usable without adding any. Choi et al. prove
+debate does not improve expected correctness for Bayesian agents; such agents
+have an unrestricted `V`, so their reasoning gap is zero and Theorem 8 predicts
+no gain. *These empirical summaries are from the papers' abstracts and
+published summaries.*
 
 --------------------------------------------------------------------------------
 <a id="summary"></a>
 
-## 9. Summary of the logical structure
+## 10. Summary of the logical structure
 
 - [Lemmas 1.1–1.5](#lemmas) are the standard information-theoretic core, proved from
   Jensen's inequality alone.
@@ -350,6 +488,9 @@ checking before relying on the comparison.*
 - [Theorem 4](#theorem-4) (tools) = chain rule + "queries are functions."
 - [Theorem 7](#theorem-7) (the Coffee Law) = [Theorem 4](#theorem-4) per round + "a tool call is one use
   of a channel, so its gain is at most capacity" + Fano.
+- [Theorem 8](#theorem-8) (reasoning ceiling) = the cross-entropy identity +
+  Theorem 7; usable information is capped by available information, but unlike
+  it can be raised by computation.
 - Theorems 2, 5, 6 and the tightness of [Theorem 7](#theorem-7) reduce to finite joint-law computations, each verified
   exactly in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) (ALL PASSED).
 - [Lemmas 6.1–6.2](#theorem-5) supply the value-of-information half (convex `V`, martingale

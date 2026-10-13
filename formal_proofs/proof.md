@@ -228,7 +228,7 @@ Two parts of the tool loop sit **outside** this information geometry:
   design keeps raw results scoped, publishes only a vetted summary to `G`, and
   logs the action.
 
-Theorems 1–7 describe what the collective can know; `S_t` and the disclosure
+Theorems 1–8 describe what the collective can know and use; `S_t` and the disclosure
 edge describe what it is permitted to do with a channel.
 
 ================================================================================

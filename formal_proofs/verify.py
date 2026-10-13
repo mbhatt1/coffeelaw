@@ -168,6 +168,47 @@ for p, adaptive, label in [(Fr(1,10), True, "noisy adaptive"), (Fr(1,10), False,
     print(f"  [{'OK ' if ok else 'FAIL'}] {label}: MAP error {pe:.6f} >= Fano floor {fano:.6f}")
 check("noiseless other-bit attains the budget: I(Th;D_T) = H(Th)", MI(scenario7(0, False),['Th'],['X1','Q1','O1','X2','Q2','O2','Z']), 2)
 
+print("Scenario 8  reasoning ceiling: usable <= available <= budget (Theorem 8)")
+# Predictive family V_one: an agent that can read ONE coordinate of its record
+# (any map from that coordinate to a distribution over Theta) or nothing.
+# Its conditional V-entropy is min over coordinates c of H(Th | c), and min with H(Th).
+def cond_H(table, X, Y):            # H(X|Y)
+    return entropy(table, X + Y) - entropy(table, Y)
+def usable_one_look(table, th, coords):
+    HV = min([entropy(table, th)] + [cond_H(table, th, [c]) for c in coords])
+    return entropy(table, th) - HV
+# (a) XOR: all the information is present, none of it is usable in one look
+t = []
+for b1, b2 in product([0,1],[0,1]):
+    t.append(({'B1':b1,'B2':b2,'Th':b1^b2,'G1':b1^b2,'G2':b2}, Fr(1,4)))
+check("available I(Th;B1,B2)", MI(t,['Th'],['B1','B2']), 1)
+check("usable I_V(B1,B2 -> Th), one look", usable_one_look(t,['Th'],['B1','B2']), 0)
+# (b) one reasoning step g(D) = (B1 xor B2, B2): same information, now usable
+check("available I(Th;g(D)) unchanged", MI(t,['Th'],['G1','G2']), 1)
+check("usable I_V(g(D) -> Th) after reasoning", usable_one_look(t,['Th'],['G1','G2']), 1)
+# (c) the chain usable <= available <= budget on Scenario 7's transcript
+for p_, adaptive, label in [(Fr(1,10), True, "noisy adaptive"), (Fr(1,10), False, "noisy other-bit")]:
+    t7 = scenario7(p_, adaptive); C = 1 - h2(float(p_))
+    DT = ['X1','Q1','O1','X2','Q2','O2','Z']
+    U, A = usable_one_look(t7,['Th'],DT), MI(t7,['Th'],DT)
+    ok = -1e-12 <= U <= A + 1e-12 and A <= 2*C + 1e-12; results.append(ok)
+    print(f"  [{'OK ' if ok else 'FAIL'}] {label}: usable {U:.6f} <= available {A:.6f} <= budget {2*C:.6f}")
+# (d) 0 <= I_V <= I for one-look families on random joint laws
+rng = __import__('random').Random(1); ok = True
+for _ in range(300):
+    n = rng.randint(2, 3)
+    rows = []
+    w = [rng.randint(1, 9) for _ in range(3 * 2**n)]; z = sum(w); i = 0
+    for th in range(3):
+        for bits in product([0,1], repeat=n):
+            a = {'Th': th}; a.update({f'D{k}': bits[k] for k in range(n)})
+            rows.append((a, Fr(w[i], z))); i += 1
+    cs = [f'D{k}' for k in range(n)]
+    U, A = usable_one_look(rows, ['Th'], cs), MI(rows, ['Th'], cs)
+    ok &= -1e-12 <= U <= A + 1e-12
+results.append(ok)
+print(f"  [{'OK ' if ok else 'FAIL'}] 300 random joint laws: 0 <= usable <= available")
+
 print()
 print("ALL PASSED" if all(results) else "SOME FAILED")
 raise SystemExit(0 if all(results) else 1)
