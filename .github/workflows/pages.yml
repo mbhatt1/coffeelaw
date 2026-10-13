@@ -31,12 +31,16 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install check dependencies
+        run: python3 -m pip install numpy
+
       - name: Run the checks
         working-directory: formal_proofs
         run: |
           python3 verify.py
           python3 verify_llm.py
           python3 verify_geometry.py
+          python3 verify_extensions.py
 
       - name: Configure Pages
         if: github.event_name != 'pull_request'

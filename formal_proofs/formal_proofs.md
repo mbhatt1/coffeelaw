@@ -609,6 +609,10 @@ Functions*, STOC 1989).
 - [Theorems 9–10](#theorem-9) (computational bounds) = sequential simulation
   (upper) + query complexity of parity and the Goldreich–Levin hard-core bit
   (lower), linked to log-loss by Jensen's inequality.
+- **Extensions** ([`extensions.md`](extensions.md)): exact accounting and the
+  equality condition (Theorem 7′), compute-gated channels (11), the worst-case
+  law (12), acting (13), communication (14), a changing world (15), adversaries
+  and provenance (16), continuous truths (17), and what remains open.
 - Theorems 2, 5, 6 and the tightness of [Theorem 7](#theorem-7) reduce to finite joint-law computations, each verified
   exactly in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) (ALL PASSED).
 - [Lemmas 6.1–6.2](#theorem-5) supply the value-of-information half (convex `V`, martingale
