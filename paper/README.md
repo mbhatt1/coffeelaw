@@ -1,9 +1,12 @@
 # Paper: The Coffee Law
 
-`coffee_law.tex` is a 6-page paper (including references) in the IEEE
+`coffee_law.tex` is a 7-page paper (6 pages of body plus references) in the IEEE
 conference template, written up from the proofs in
 [`../formal_proofs`](../formal_proofs). The compiled PDF is
-[`coffee_law.pdf`](coffee_law.pdf). It leads with intuition: each result opens
+[`coffee_law.pdf`](coffee_law.pdf). Its thesis is that different mechanisms of
+collective intelligence (information, reasoning, communication) have different
+kinds of bounds, so the question for a struggling collective is which resource
+limits it. It leads with intuition: each result opens
 with a plain-language explanation, and a running example (an agent team
 debugging a production incident) ties the three ceilings together.
 
@@ -14,9 +17,10 @@ All content lives in `coffee_law.tex`; small wrappers set switches before
 
 | File | Version | Use |
 |---|---|---|
-| `coffee_law.tex` → `coffee_law.pdf` | Named submission | AGENT 2027 (single-anonymous); fits both the full and short tracks |
-| `coffee_law_anon.tex` → `coffee_law_anon.pdf` | Anonymous | Double-blind venues such as ISIT |
-| `coffee_law_final.tex` → `coffee_law_final.pdf` | Camera-ready | Adds the IEEE copyright notice (placeholder code until the conference supplies it) |
+| `coffee_law.tex` → `coffee_law.pdf` | Full, named (6-page body) | AGENT 2027 full track (8 pages excl. references) |
+| `coffee_law_short.tex` → `coffee_law_short.pdf` | Short, named (5-page body) | AGENT 2027 short track (5 pages excl. references) |
+| `coffee_law_anon.tex` → `coffee_law_anon.pdf` | Short, anonymous | Double-blind venues such as ISIT (5 pages + references) |
+| `coffee_law_final.tex` → `coffee_law_final.pdf` | Full, camera-ready | Adds the IEEE copyright notice (placeholder code until the conference supplies it) |
 
 ## Checking
 
@@ -25,7 +29,8 @@ the checker. To recheck after edits:
 
 ```bash
 cd paper
-python3 ../.claude/skills/camera-ready/scripts/check_paper.py coffee_law.tex --page-limit 5 --numbers numbers.json
+python3 ../.claude/skills/camera-ready/scripts/check_paper.py coffee_law.tex --page-limit 8 --numbers numbers.json
+python3 ../.claude/skills/camera-ready/scripts/check_paper.py coffee_law_short.tex --page-limit 5
 python3 ../.claude/skills/camera-ready/scripts/check_paper.py coffee_law_anon.tex --page-limit 5 --anonymous --names "Manish Bhatt,mbhatt1"
 ```
 
@@ -39,8 +44,9 @@ it. The latest audit is in [`camera_ready_report.md`](camera_ready_report.md).
 
 - Topics include tool use and multi-agent coordination.
 - Accepted papers are published by IEEE.
-- Full papers: up to 8 pages excluding references; short papers: up to 5. The
-  body is 5 pages, so the paper fits **either track** as is.
+- Full papers: up to 8 pages excluding references; short papers: up to 5. Use
+  `coffee_law.pdf` for the full track and `coffee_law_short.pdf` for the short
+  track.
 - Single-anonymous review, so author names stay on the submission.
 - Deadline: **November 13, 2026** per the ICSE 2027 workshop call. The workshop
   page also shows November 27; confirm on the submission site.
