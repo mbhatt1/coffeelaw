@@ -259,11 +259,22 @@ textbook information theory. The closed-group case has been written up for
 LLM debate by Shin ([arXiv:2605.01704](https://arxiv.org/abs/2605.01704)) and
 Choi et al. ([arXiv:2508.17536](https://arxiv.org/abs/2508.17536)), and Yang et
 al. ([arXiv:2602.03794](https://arxiv.org/abs/2602.03794)) give a bound of the
-same shape with agents as the channels. What these notes add, as far as we found, is
-the explicit accounting for tools: per-call capacity, adaptive queries, and an
-error floor.
-(That comparison is based on the papers' summaries; their exact statements
-are worth reading in full.)
+same shape with agents as the channels. The reasoning ceiling is "usable information"
+in the sense of Xu et al. ([arXiv:2002.10689](https://arxiv.org/abs/2002.10689)), who also show computation can create it.
+What these notes add, as far as we found, is the explicit accounting for tools
+(per-call capacity, adaptive queries, an error floor) and the two ceilings
+combined in one chain.
+
+The published experiments line up with both ceilings. On closed-book knowledge
+questions, giving reasoning models more thinking time doesn't reliably help and
+often increases hallucination ([arXiv:2509.06861](https://arxiv.org/abs/2509.06861)): an information-bound task. On math and
+strategy, debate helps (Du et al., [arXiv:2305.14325](https://arxiv.org/abs/2305.14325)): a compute-bound task. And debate
+tends to do no better than majority voting or self-consistency at equal effort
+(Smit et al., [PMLR 235](https://proceedings.mlr.press/v235/smit24a.html); Choi et al.), which is what you'd expect if its value is
+extra reasoning. Even Du et al.'s finding that debate improves *factuality*
+fits: those facts were already in the model's weights, so debate made them
+usable rather than adding them.
+(These comparisons are based on the papers' abstracts and published summaries.)
 
 The short version, and the Coffee Law in one sentence: **a collective's
 intelligence can be emergent, but its knowledge has a budget, and only the

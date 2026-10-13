@@ -335,9 +335,11 @@ multi-agent performance by the task uncertainty `H(Y|X)` and a sum of
 per-agent-channel informations, the same "min(H, Σ channels)" shape with agents
 as the channels. The ingredients are classical: the chain rule and DPI (Cover &
 Thomas, ch. 2), channel capacity, and Fano's inequality as used for minimax and
-active-learning lower bounds (e.g. Raginsky & Rakhlin, 2011). *These
-references have not yet been read in full; the exact theorem statements need
-checking before relying on the comparison.*
+active-learning lower bounds (e.g. Raginsky & Rakhlin, 2011). As far as we
+found, the per-call capacity accounting with adaptive queries and the Fano
+floor for tool-using collectives are not stated in this literature. *The
+comparisons with the 2025–26 preprints are based on their abstracts and
+published summaries, not full readings.*
 
 <a id="theorem-8"></a>
 
@@ -442,11 +444,36 @@ question of computational complexity, and for problems like factoring large
 numbers no efficient classical method is known.
 
 **Related work.** Usable information under computational constraints is
-studied as "V-information" by Xu, Zhao, Song, Stewart and Ermon, *A Theory of
-Usable Information under Computational Constraints* (ICLR 2020), which also
-observes that computation can increase it. The definition above follows that
-idea, with the true entropy `H(Θ)` as baseline under assumption (V0). *This
-reference is cited from memory and has not been re-checked here.*
+"predictive V-information" in Xu, Zhao, Song, Stewart and Ermon, *A Theory of
+Usable Information under Computational Constraints* (ICLR 2020, [arXiv:2002.10689](https://arxiv.org/abs/2002.10689)). That
+paper shows V-information reduces to mutual information without constraints and,
+unlike mutual information, can be created by computation, in violation of the
+data-processing inequality: part (c) above. Our definition follows the same
+idea but uses the true entropy `H(Θ)` as the baseline under assumption (V0),
+where theirs uses the family's own no-input entropy.
+
+**Empirical consistency.** The two regimes match published results:
+- *Information-bound:* *Test-Time Scaling in Reasoning Models Is Not Effective
+  for Knowledge-Intensive Tasks Yet* ([arXiv:2509.06861](https://arxiv.org/abs/2509.06861)) finds, across 14 reasoning models
+  on closed-book knowledge tasks, that more test-time compute does not reliably
+  raise accuracy and often increases hallucination, and argues that
+  compute-only scaling of a fixed model cannot add information about the answer.
+- *Compute-bound:* Du et al., *Improving Factuality and Reasoning in Language
+  Models through Multiagent Debate* (ICML 2024, [arXiv:2305.14325](https://arxiv.org/abs/2305.14325)) report that debate
+  improves mathematical and strategic reasoning.
+- *Debate is worth its reasoning gain (Corollary 8.1):* Smit et al., *Should we
+  be going MAD?* (ICML 2024, [PMLR 235](https://proceedings.mlr.press/v235/smit24a.html)) find that debate does not reliably beat
+  self-consistency or ensembling, at higher cost; Choi et al. (arXiv:2508.17536)
+  attribute most debate gains to majority voting. If debate's value is
+  computation, equal computation spent another way should do as well.
+
+Two results look like tensions but fit. Du et al. also report better
+*factuality* from debate; the facts were in the model's weights, i.e. in `D₀`,
+so debate made stored information usable without adding any. Choi et al. prove
+debate does not improve expected correctness for Bayesian agents; such agents
+have an unrestricted `V`, so their reasoning gap is zero and Theorem 8 predicts
+no gain. *These empirical summaries are from the papers' abstracts and
+published summaries.*
 
 --------------------------------------------------------------------------------
 <a id="summary"></a>
