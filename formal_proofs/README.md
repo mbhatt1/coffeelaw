@@ -1,16 +1,18 @@
 # Formal proofs: collective information acquisition
 
+**Read online:** <https://mbhatt1.github.io/coffeelaw/> · Blog post: [Agent collectives have bounds](agent-collectives-have-bounds.md)
+
 Information-theoretic results on what a group of communicating agents (LLMs or
 otherwise) can learn about an external truth `Θ`.
 
 | File | Contents |
 |---|---|
-| `formal_proofs.md` | Lemmas and Theorems 1–7: conservation in closed systems, synergy, growth only through external channels, tools, routing, consensus vs. knowledge, and the **capacity budget** (Theorem 7): `I(Θ; record) ≤ min(H(Θ), I(Θ; D₀) + Σ_t C_t)` for any agents with tools, with a Fano lower bound on error. |
-| `proof.md` | The same results as the geometry of one convex function (negative entropy): KL as its Bregman divergence, information gain as value of information under log loss, the Fisher metric, and evidence vs. consensus flows (Lemmas G1–G5). |
-| `llm_specialization.md` | Which results hold for any agent, plus LLM-specific costs (miscalibration, lossy messages, persuasion), combined in a proved regret bound (Lemma B0, Theorem B4). |
-| `verify.py` | Exact checks of the finite examples in `formal_proofs.md`, including Theorem 7's tightness example (Scenario 7). |
-| `verify_llm.py` | Checks of the examples and bounds in `llm_specialization.md`. |
-| `verify_geometry.py` | Checks of Lemmas G1–G5 in `proof.md`. |
+| [`formal_proofs.md`](formal_proofs.md) | Lemmas and Theorems 1–7: conservation in closed systems, synergy, growth only through external channels, tools, routing, consensus vs. knowledge, and the **capacity budget** (Theorem 7): `I(Θ; record) ≤ min(H(Θ), I(Θ; D₀) + Σ_t C_t)` for any agents with tools, with a Fano lower bound on error. |
+| [`proof.md`](proof.md) | The same results as the geometry of one convex function (negative entropy): KL as its Bregman divergence, information gain as value of information under log loss, the Fisher metric, and evidence vs. consensus flows (Lemmas G1–G5). |
+| [`llm_specialization.md`](llm_specialization.md) | Which results hold for any agent, plus LLM-specific costs (miscalibration, lossy messages, persuasion), combined in a proved regret bound (Lemma B0, Theorem B4). |
+| [`verify.py`](verify.py) | Exact checks of the finite examples in `formal_proofs.md`, including Theorem 7's tightness example (Scenario 7). |
+| [`verify_llm.py`](verify_llm.py) | Checks of the examples and bounds in `llm_specialization.md`. |
+| [`verify_geometry.py`](verify_geometry.py) | Checks of Lemmas G1–G5 in `proof.md`. |
 
 Run:
 
@@ -19,6 +21,10 @@ python3 verify.py
 python3 verify_llm.py
 python3 verify_geometry.py
 ```
+
+The site is built from this directory by `.github/workflows/pages.yml`, which
+runs all three scripts first and publishes only if they pass. `index.md` is the
+home page.
 
 The "machine-checked" claims are numerical evaluations of small examples (exact
 rational distributions where possible, plus randomized tests of the general

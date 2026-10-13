@@ -170,3 +170,4 @@ check("noiseless other-bit attains the budget: I(Th;D_T) = H(Th)", MI(scenario7(
 
 print()
 print("ALL PASSED" if all(results) else "SOME FAILED")
+raise SystemExit(0 if all(results) else 1)

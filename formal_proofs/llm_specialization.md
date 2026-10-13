@@ -1,6 +1,6 @@
 # From any-agent to LLMs: owning the generality, then modeling the model
 
-The results in `formal_proofs.md` were criticized, correctly, for carrying an
+The results in [`formal_proofs.md`](formal_proofs.md) were criticized, correctly, for carrying an
 "LLM" label on math that never used anything specific to language models. This
 document fixes that in two layers. **Part A** states the single assumption the
 general theory actually needs and declares its scope: any communicating agent.
@@ -9,13 +9,15 @@ update operator and a lossy/persuasive language channel — and proves how much
 each one costs, closing the error terms the earlier bound left sealed.
 
 ================================================================================
+<a id="part-a"></a>
+
 # Part A — The general theory (any agent)
 
 **Assumption A (the only one).** An agent is a *stochastic policy*: a conditional
 distribution `π(a | h)` of action given history. Nothing else is assumed — no
 rationality, no calibration, no architecture.
 
-Under Assumption A, every result in `formal_proofs.md` holds verbatim:
+Under Assumption A, every result in [`formal_proofs.md`](formal_proofs.md) holds verbatim:
 
 - **Conservation.** A closed collective's transcript is a function of initial
   data and truth-independent noise, so `I(Θ; transcript) ≤ I(Θ; D₀)` by the
@@ -38,6 +40,8 @@ What it does **not** capture — and what makes LLMs LLMs — is that a real age
 language that is lossy and persuadable. Part B models exactly those two things.
 
 ================================================================================
+<a id="part-b"></a>
+
 # Part B — The LLM specialization (modeling the model)
 
 We keep Assumption A and add two named deviation operators: a non-Bayesian
@@ -50,6 +54,8 @@ Throughout, `U` is the range of the utility (`u(a,θ) ∈ [0, U]`),
 Logs are base 2.
 
 --------------------------------------------------------------------------------
+<a id="b0"></a>
+
 ## B0. The plug-in regret bound
 
 An agent should act on a reference belief `b*` but instead reports `b̂` and
@@ -77,6 +83,8 @@ So the **estimation error** `ε_t` is a belief distance and the **decision error
 LLM-specific deviations.
 
 --------------------------------------------------------------------------------
+<a id="b1"></a>
+
 ## B1. The miscalibrated update operator (the "bad Bayesian" cost)
 
 **Model.** Where an ideal agent would report the Bayesian posterior
@@ -106,10 +114,12 @@ controlled experiments) or approximated by a trusted reference model. Without
 `b*`, held-out ground truth still identifies the *difference* in expected
 log-loss between two predictors, but not the gap to Bayes itself.
 
-*Verified* (`verify_llm.py`, B1): conservatism with `γ=½` on `b*=(0.9,0.1)` and a
+*Verified* ([`verify_llm.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_llm.py), B1): conservatism with `γ=½` on `b*=(0.9,0.1)` and a
 uniform prior yields `b̂=(0.7,0.3)` and gap `= 0.1678` bits, matching KL exactly.
 
 --------------------------------------------------------------------------------
+<a id="b2"></a>
+
 ## B2. The natural-language channel (the compression cost)
 
 **Model.** Agent `i`'s evidence `D` reaches agent `j` only through a message
@@ -134,6 +144,8 @@ message about a 2-bit truth gives `I(Θ;D)=2`, `I(Θ;M)=1`, and
 `E KL(b^D ‖ b^M) = 1` bit.
 
 --------------------------------------------------------------------------------
+<a id="b3"></a>
+
 ## B3. The persuasion channel (the LLM-critical failure)
 
 This is the behavior the general theory cannot express: text moving a belief
@@ -165,6 +177,8 @@ confident wrong agent," with a threshold: the decision flips once `α` exceeds
 the receiver's prior margin for the truth.
 
 --------------------------------------------------------------------------------
+<a id="b4"></a>
+
 ## B4. Putting it together
 
 Consider one round in which receiver `j` gets message `M_t` built from the
@@ -187,7 +201,7 @@ Theorem B2, and the third by Pinsker. ∎
 
 **Reading.** Each term is a separate failure, and each has its own fix:
 - `E[1 − b^D_t(Θ)]` is the probability that a draw from the collective's best
-  posterior is wrong. It is at least the MAP error, so by Theorem 7 (Fano) it
+  posterior is wrong. It is at least the MAP error, so by [Theorem 7](formal_proofs.md#theorem-7) (Fano) it
   stays bounded away from zero until the tool budget `Σ_t C_t` approaches
   `H(Θ) − I(Θ;D₀)`. Only the world channel lowers it.
 - The channel-loss term falls only if messages preserve the decision-relevant
@@ -203,13 +217,15 @@ term stays bounded away from zero, Theorem B4 no longer forces the regret to
 vanish. The earlier informal condition "world information gain > channel loss +
 miscalibration + persuasion" is a heuristic summary of this and is not a theorem:
 its terms are in different units. The drift version of the evidence term is
-proved in `proof.md` (Lemma G4).
+proved in [`proof.md`, Lemma G4](proof.md#g4).
 
-*Verified* (`verify_llm.py`, B0 and B4): Lemma B0 on 2000 random belief pairs and
+*Verified* ([`verify_llm.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_llm.py), B0 and B4): Lemma B0 on 2000 random belief pairs and
 utilities, and every term of Theorem B4 on a 2-bit example with a 1-bit message
 and an anchoring receiver.
 
 ================================================================================
+<a id="limits"></a>
+
 # What is now LLM-specific, and what remains assumed
 
 **Genuinely about LLMs now:**
