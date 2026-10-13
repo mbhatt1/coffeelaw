@@ -26,6 +26,7 @@ up to what it *holds*, never past it
 - [Formal proofs](formal_proofs/formal_proofs.md) — the Coffee Law is
   [Theorem 7](formal_proofs/formal_proofs.md#theorem-7); the reasoning ceiling is
   [Theorem 8](formal_proofs/formal_proofs.md#theorem-8)
+- [Paper (IEEE format, PDF)](paper/coffee_law.pdf) — see [`paper/README.md`](paper/README.md) for the target venue
 - [Information geometry](formal_proofs/proof.md)
 - [From any agent to LLMs](formal_proofs/llm_specialization.md)
 

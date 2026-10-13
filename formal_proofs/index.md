@@ -39,6 +39,8 @@ computation the using takes, and not outcomes the agents themselves control.
 
 **New here? Start with the blog post:
 [Agent collectives have bounds](agent-collectives-have-bounds.md).**
+For the short formal version, read the
+[paper (PDF)](https://github.com/mbhatt1/coffeelaw/blob/main/paper/coffee_law.pdf).
 
 ## Documents
 
@@ -82,10 +84,14 @@ Choi et al., *Debate or Vote* ([arXiv:2508.17536](https://arxiv.org/abs/2508.175
 Yang et al., *Understanding Agent Scaling in LLM-Based Multi-Agent Systems via
 Diversity* ([arXiv:2602.03794](https://arxiv.org/abs/2602.03794)) gives a bound
 of the same "min(H, Σ channels)" shape with agents as the channels. The
+reasoning ceiling is usable ("V-") information in the sense of Xu et al.
+([arXiv:2002.10689](https://arxiv.org/abs/2002.10689)). Published experiments match both regimes: extra test-time compute
+doesn't reliably help on closed-book knowledge tasks ([arXiv:2509.06861](https://arxiv.org/abs/2509.06861)), debate helps on
+math and strategy (Du et al., [arXiv:2305.14325](https://arxiv.org/abs/2305.14325)), and debate does about as well as
+self-consistency or voting at equal effort (Smit et al., [PMLR 235](https://proceedings.mlr.press/v235/smit24a.html)). The
 mathematical ingredients — the chain rule, the data-processing inequality,
 channel capacity and Fano's inequality — are textbook (Cover & Thomas,
-*Elements of Information Theory*). See the
-[related-work note](formal_proofs.md#theorem-7) for the comparison and its
-caveats.
+*Elements of Information Theory*). See the related-work notes under [Theorem 7](formal_proofs.md#theorem-7)
+and [Theorem 8](formal_proofs.md#theorem-8) for the comparison and its caveats.
 
 [Source on GitHub](https://github.com/mbhatt1/coffeelaw/tree/main/formal_proofs)

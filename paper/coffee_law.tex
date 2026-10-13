@@ -1,0 +1,377 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{lemma}{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\I}{I}
+\newcommand{\Hh}{H}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\E}{\mathbb{E}}
+
+\begin{document}
+
+\title{The Coffee Law: Information and Reasoning\\Ceilings for Tool-Using Agent Collectives}
+
+\author{\IEEEauthorblockN{Manish Bhatt}
+\IEEEauthorblockA{\emph{Affiliation to be completed}\\
+\emph{email to be completed}}}
+
+\maketitle
+
+\begin{abstract}
+Multi-agent systems built from large language models (LLMs) are often expected
+to produce knowledge beyond any single agent through debate, critique and
+voting. We give information-theoretic ceilings on what such collectives can
+achieve, independent of how the agents work. First, the \emph{Coffee Law}: for
+any number of agents, any communication protocol and any adaptive tool-query
+policy, the information the collective holds about an external truth $\Theta$
+is at most $\min\{\Hh(\Theta),\, \I(\Theta;D_0)+\sum_t C_t\}$, where $D_0$ is
+the starting data and $C_t$ is the Shannon capacity of round $t$'s tool calls.
+Fano's inequality turns this into a floor on error and a lower bound on the
+number of tool rounds. Second, a \emph{reasoning ceiling}: the information that
+computationally bounded agents can \emph{use} is at most what they \emph{hold},
+with the gap equal to an expected KL divergence; computation, including debate,
+can raise usable information but never available information. Together the two
+ceilings account for published findings that extra test-time compute does not
+help on knowledge-intensive tasks, that debate helps on reasoning tasks, and
+that debate performs about as well as voting at equal compute. Every finite
+example is verified exactly in public code.
+\end{abstract}
+
+\begin{IEEEkeywords}
+multi-agent systems, large language models, tool use, mutual information,
+channel capacity, Fano's inequality, usable information
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+LLM-based agent systems combine many model instances that post to a shared
+board, debate, vote and call tools such as search engines, code interpreters and
+APIs~\cite{du2024,yao2023,schick2023}. A common expectation is that such a
+collective can know more than any member. This paper asks how much more, and
+from where.
+
+We answer with two ceilings that hold for \emph{any} agents---LLMs, people or
+programs---because the proofs never inspect the agents:
+\begin{itemize}
+\item \textbf{The Coffee Law} (Theorem~\ref{thm:coffee}). A collective can never
+know more about the world than its starting data plus what its tools can carry.
+Communication and internal computation add nothing to this budget; only starting
+data and informative tool calls raise it. The number of agents does not appear.
+\item \textbf{The reasoning ceiling} (Theorem~\ref{thm:reasoning}). What
+computationally bounded agents can \emph{use} is at most what they \emph{hold}.
+Reasoning, including debate, closes this gap but never passes it.
+\end{itemize}
+Together they give the chain
+\begin{equation}\label{eq:chain}
+\underbrace{\I_{\mathcal V}(D_T\!\to\!\Theta)}_{\text{usable}}
+\le \underbrace{\I(\Theta;D_T)}_{\text{available}}
+\le \underbrace{\min\{\Hh(\Theta),\,B_T\}}_{\text{budget}},
+\end{equation}
+with $B_T=\I(\Theta;D_0)+\sum_{t<T}C_t$, where reasoning raises the left term
+and tools raise the right one. Our
+contributions are: (i)~the capacity budget for tool-using collectives with
+adaptive queries, with a Fano error floor and a tightness example; (ii)~the
+combination of available and usable information into one chain, with an exact
+expression for the reasoning gap; (iii)~an account of several published
+empirical findings on debate and test-time compute
+(Section~\ref{sec:empirical}); and (iv)~exact numerical verification of every
+finite example.\footnote{Code, proofs and checks:
+\url{https://github.com/mbhatt1/coffeelaw}.}
+
+The ingredients---the chain rule, the data-processing inequality (DPI), channel
+capacity and Fano's inequality---are classical~\cite{cover2006,shannon1948}. The
+contribution is their assembly into a model of tool-using agent collectives and
+the resulting separation of information-bound from compute-bound tasks.
+
+\section{Model}\label{sec:model}
+
+All variables are discrete with finite support; logarithms are base~2.
+$\Theta$ is a fixed external truth. $D_t$ is the collective's \emph{full record}
+at the start of round $t$: the initial data $D_0$ (every agent's context and
+weights) plus every post, private state, query and tool result since. Each
+agent's state and the board are functions of $D_t$. In round $t$, fresh
+internal randomness $\xi_t$ (sampling, scheduling) is drawn; the round's tool
+calls $Q_t=g_t(D_t,\xi_t)$ are issued under any policy $g_t$; results
+$O_{t+1}\sim K_t(\cdot\mid\Theta,Q_t,D_t)$ return; communication and computation
+use fresh randomness $\zeta_t$; and
+\[
+D_{t+1}=(D_t,\xi_t,Q_t,O_{t+1},\zeta_t).
+\]
+
+\noindent\textbf{Assumptions.}
+(A1)~\emph{No side channels}: $\Theta$ reaches the collective only through $D_0$
+and tool results.
+(A2)~\emph{Truth-independent noise}: $\xi_t\perp(\Theta,D_t)$ and
+$\zeta_t\perp(\Theta,D_t,\xi_t,Q_t,O_{t+1})$.
+(A3)~\emph{Tools are channels from $\Theta$}: given $(\Theta,Q_t,D_t)$, $O_{t+1}$
+is independent of $\xi_t$ with law $K_t$; tools may be adaptive or stateful.
+(A4)~\emph{Fixed truth}: actions do not change $\Theta$.
+
+\noindent\textbf{Capacity.} For a query $q$ and history $d$, $\theta\mapsto
+K_t(\cdot\mid\theta,q,d)$ is a channel with capacity
+$\mathrm{Cap}(K_{t,q,d})=\max_{P_\Theta}\I(\Theta;O)$. Let
+$C_t := \sup_{q,d}\mathrm{Cap}(K_{t,q,d}) \le \log|\mathcal O_t|$, where
+$\mathcal O_t$ is the set of possible results in round $t$.
+
+\section{Conservation and Synergy}
+
+\begin{proposition}[Conservation]\label{prop:conservation}
+If no tools are called ($C_t=0$ for all $t$), then $\I(\Theta;D_T)\le \I(\Theta;D_0)$.
+\end{proposition}
+This is the special case of Theorem~\ref{thm:coffee} with no tools; it also
+follows directly from the DPI, since $D_T$ is a function of $D_0$ and
+$\Theta$-independent noise. Debate, critique and voting therefore add no
+information about $\Theta$.
+
+\begin{proposition}[Synergy]\label{prop:synergy}
+Let $B_1,B_2$ be i.i.d.\ uniform bits and $\Theta=B_1\oplus B_2$. Then
+$\I(\Theta;B_1)=\I(\Theta;B_2)=0$ but $\I(\Theta;B_1,B_2)=1$.
+\end{proposition}
+Pooling can make jointly held information accessible that no member can use
+alone; this is the failure of submodularity of $S\mapsto \I(\Theta;S)$ studied
+in partial information decomposition~\cite{williams2010}. The bit was present
+in $D_0$ throughout: emergence rearranges the budget without enlarging it.
+
+\section{The Coffee Law}\label{sec:coffee}
+
+\begin{theorem}[Coffee Law]\label{thm:coffee}
+Under (A1)--(A4), let $B_T := \I(\Theta;D_0)+\sum_{t<T}C_t$. Then
+\[
+\I(\Theta;D_T)\le \min\{\Hh(\Theta),\,B_T\},
+\]
+and the same bound holds for every output $Y$ of the collective (answer, board,
+vote, any agent's state). For any estimator $\hat\Theta$ computed from the
+record, with $|\Theta|\ge 3$,
+\[
+\Pr(\hat\Theta\ne\Theta)\ \ge\ \frac{\Hh(\Theta)-\min\{\Hh(\Theta),B_T\}-1}{\log(|\Theta|-1)} .
+\]
+\end{theorem}
+
+\begin{proof}
+By the chain rule, $\I(\Theta;D_{t+1})-\I(\Theta;D_t)$ equals
+\begin{multline*}
+\I(\Theta;\xi_t|D_t)+\I(\Theta;Q_t|D_t,\xi_t)\\
++\I(\Theta;O_{t+1}|S)+\I(\Theta;\zeta_t|S,O_{t+1}),
+\end{multline*}
+with $S=(D_t,\xi_t,Q_t)$. The first and last terms vanish by (A2); the second
+vanishes because $Q_t$ is a function of $(D_t,\xi_t)$. For the third, fix
+$S=s=(d,x,q)$. By (A3), given $S=s$ the pair $(\Theta,O_{t+1})$ has $\Theta\sim
+p(\cdot|s)$ and $O_{t+1}\sim K_t(\cdot|\Theta,q,d)$, so
+$\I(\Theta;O_{t+1}|S=s)$ is the mutual information of channel $K_{t,q,d}$ under
+input law $p(\cdot|s)$, at most its capacity and hence at most $C_t$. Averaging
+over $s$ and summing over rounds gives $\I(\Theta;D_T)\le B_T$; also
+$\I(\Theta;D_T)\le\Hh(\Theta)$. Outputs are functions of $D_T$ and independent
+noise, so the DPI extends the bound to them. For the error floor, Fano's
+inequality~\cite{cover2006} gives $\Hh(\Theta|\hat\Theta)\le 1+\Pr(\hat\Theta\ne\Theta)\log(|\Theta|-1)$,
+and the DPI gives $\Hh(\Theta|\hat\Theta)\ge \Hh(\Theta)-\min\{\Hh(\Theta),B_T\}$.
+\end{proof}
+
+Adaptivity is already accounted for: the query policy only selects the input
+law $p(\cdot|s)$ and the channel $K_{t,q,d}$, and capacity is the maximum over
+both. This mirrors the classical fact that feedback does not increase the
+capacity of a memoryless channel~\cite{shannon1956,massey1990} and the use of Fano's
+inequality for active-learning lower bounds~\cite{raginsky2011}.
+
+\begin{corollary}[Rounds needed]\label{cor:rounds}
+If $\Theta$ is uniform on $2^k$ values ($k\ge 2$), $\I(\Theta;D_0)=0$ and $C_t\le
+C$ for all $t$, then reaching $\Pr(\hat\Theta\ne\Theta)\le\varepsilon$ requires
+$T\ge ((1-\varepsilon)k-1)/C$ tool rounds, regardless of the number of agents
+or how they communicate.
+\end{corollary}
+
+\begin{corollary}[Agents do not appear]
+Synergy, debate, voting and the number of agents $N$ are absent from $B_T$. More
+agents raise the budget only by issuing more or better tool calls, i.e.\ by
+raising $C_t$.
+\end{corollary}
+
+\noindent\textbf{Tightness.} Let $\Theta$ be uniform on $\{0,1,2,3\}$ and let a
+call $q\in\{0,1\}$ return bit $q$ of $\Theta$ through a binary symmetric channel
+with flip probability $0.1$, so $C=1-h(0.1)\approx 0.531$ bits. Table~\ref{tab:tight}
+gives exact values. Querying both bits attains the budget; an adaptive policy
+that sometimes re-queries the same bit falls below it; a debate step adds
+nothing.
+
+\begin{table}[t]
+\caption{Exact information about $\Theta$ after two tool rounds (budget $2C$).}
+\label{tab:tight}
+\centering
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Policy & $\I(\Theta;D_2)$ (bits) & Budget $\min\{\Hh, 2C\}$ \\
+\midrule
+Query bit 0, then bit 1 & 1.0620 & 1.0620 \\
+Adaptive, may repeat a bit & 0.9820 & 1.0620 \\
+Either policy, plus a debate step & unchanged & --- \\
+Both bits, noise-free tool & 2.0000 & 2.0000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{The Reasoning Ceiling}\label{sec:reasoning}
+
+Holding information is not the same as being able to use it: the prime factors
+of $N$ are fully determined by $N$, yet finding them may take enormous
+computation. Following Xu~et~al.~\cite{xu2020}, we model bounded agents by a
+predictive family.
+
+\begin{definition}
+A \emph{predictive family} $\mathcal V$ is a set of predictors $f$ mapping a
+record $d$ to a distribution $f[d]$ on $\Theta$, containing the constant prior
+predictor $f[d]=p_\Theta$. Define
+$\Hh_{\mathcal V}(\Theta|D) := \inf_{f\in\mathcal V}\E[-\log f[D](\Theta)]$ and
+the \emph{usable information}
+$\I_{\mathcal V}(D\to\Theta) := \Hh(\Theta)-\Hh_{\mathcal V}(\Theta|D)$.
+\end{definition}
+
+Xu~et~al.\ use the family's own no-input entropy as the baseline; with the prior
+predictor in $\mathcal V$, as assumed here, the baseline is $\Hh(\Theta)$.
+
+\begin{theorem}[Reasoning ceiling]\label{thm:reasoning}
+\begin{enumerate}
+\item[(a)] $0\le \I_{\mathcal V}(D\to\Theta)\le \I(\Theta;D)$, and the
+\emph{reasoning gap} is
+\begin{multline*}
+\I(\Theta;D)-\I_{\mathcal V}(D\to\Theta)\\
+=\inf_{f\in\mathcal V}\E_D\big[\KL\big(p(\cdot|D)\,\|\,f[D]\big)\big].
+\end{multline*}
+\item[(b)] Under (A1)--(A4), the chain~\eqref{eq:chain} holds for the record $D_T$.
+\item[(c)] There exist $\mathcal V$ and a deterministic $g$ with
+$\I(\Theta;g(D))=\I(\Theta;D)$ but $\I_{\mathcal V}(g(D)\to\Theta)>\I_{\mathcal V}(D\to\Theta)$.
+For every $g$, $\I_{\mathcal V}(g(D)\to\Theta)\le \I(\Theta;D)$.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+(a)~The prior predictor gives $\Hh_{\mathcal V}(\Theta|D)\le\Hh(\Theta)$. For any
+$f$, the cross-entropy identity gives
+$\E[-\log f[D](\Theta)]=\Hh(\Theta|D)+\E_D\KL(p(\cdot|D)\|f[D])$; take the
+infimum and subtract from $\Hh(\Theta)$. (b)~Part~(a) and
+Theorem~\ref{thm:coffee}. (c)~The last claim is (a) followed by the DPI. For the
+strict example take Proposition~\ref{prop:synergy} with $D=(B_1,B_2)$ and the
+``one-look'' family $\mathcal V_1$ of predictors that read a single coordinate of
+the record. Each coordinate of $D$ is independent of $\Theta$, so
+$\I_{\mathcal V_1}(D\to\Theta)=0$. After one reasoning step
+$g(D)=(B_1\oplus B_2,B_2)$ the first coordinate equals $\Theta$, so
+$\I_{\mathcal V_1}(g(D)\to\Theta)=1=\I(\Theta;g(D))=\I(\Theta;D)$.
+\end{proof}
+
+Part~(c) is the observation of~\cite{xu2020} that usable information violates
+the DPI, placed in the collective setting.
+
+\begin{corollary}[Debate adds reasoning, not facts]
+In a closed collective every post is a function of $D_0$ and noise, so it adds
+no available information (Proposition~\ref{prop:conservation}). It can add usable
+information: an agent that posts an intermediate result hands others a
+computation outside their family. The gain is capped by $\I(\Theta;D_0)$.
+\end{corollary}
+
+\noindent\textbf{Two regimes.} A task is \emph{information-bound} when the right
+inequality of~\eqref{eq:chain} binds (forecasting, facts about the world,
+diagnosing a live system): only tools and better starting data help. It is
+\emph{compute-bound} when the left gap is large (mathematics, proofs, code,
+planning from known facts): more reasoning helps. A code interpreter applied to
+data already held enlarges $\mathcal V$; a tool that observes the world raises
+$C_t$. In the noisy example of Table~\ref{tab:tight}, the record holds 1.0620
+bits but a one-look agent can use only 0.2655 of them; the remaining 0.7965
+bits are a reasoning gap that more observations cannot close.
+
+\noindent\textbf{Imperfect agents.} Real agents fall further below the chain;
+the following are proved in the accompanying notes (footnote~1).
+For a decision with utility range $U$, acting on a belief $\hat b$ instead of
+the correct posterior $b^*$ costs at most $2U\,\mathrm{TV}(b^*,\hat b)+\delta\le
+2U\sqrt{(\ln 2/2)\,\KL(b^*\|\hat b)}+\delta$, where $\delta$ is the agent's
+suboptimality given its own belief. A summary $M$ of data $D$ loses exactly
+$\E\,\KL(p(\cdot|D)\|p(\cdot|M))=\I(\Theta;D)-\I(\Theta;M)$. And a message with
+zero information about $\Theta$ can still flip a decision: an agent with belief
+$(0.6,0.4)$ in favor of the truth that gives weight $\alpha$ to a constant false
+claim answers wrongly once $\alpha>1/6$.
+
+\section{Consistency with Empirical Findings}\label{sec:empirical}
+
+The chain~\eqref{eq:chain} accounts for several published results.
+
+\noindent\textbf{Information-bound tasks resist reasoning.} Across 14 reasoning
+models on closed-book knowledge benchmarks, more test-time compute does not
+reliably raise accuracy and often increases hallucination~\cite{zhao2026}; the
+authors argue that compute-only scaling of a fixed model cannot add information
+about the answer, which is Proposition~\ref{prop:conservation}. Retrieval and
+tools, which raise $C_t$, are the standard remedy for knowledge-intensive
+tasks~\cite{lewis2020,yao2023,schick2023}. Intrinsic self-correction without
+external feedback likewise often fails to improve reasoning~\cite{huang2024}.
+
+\noindent\textbf{Compute-bound tasks benefit from debate.} Multi-agent debate
+improves mathematical and strategic reasoning~\cite{du2024}, consistent with
+debate closing a reasoning gap.
+
+\noindent\textbf{Debate is worth its reasoning gain.} Debate does not reliably
+outperform self-consistency or ensembling and costs more~\cite{smit2024}, and
+most of its gains are attributable to majority voting~\cite{choi2025}. If
+debate's value is computation, equal computation spent another way should do as
+well.
+
+\noindent\textbf{Two apparent tensions.} Debate is also reported to improve
+\emph{factuality}~\cite{du2024}. The facts were in the weights, i.e.\ in $D_0$,
+so debate made stored information usable without adding any. Debate is proved
+not to improve expected correctness for Bayesian agents~\cite{choi2025}; such
+agents have an unrestricted $\mathcal V$, so their reasoning gap is zero and
+Theorem~\ref{thm:reasoning} predicts no gain.
+
+\noindent\textbf{Testable predictions.} (P1)~Accuracy versus the number of
+informative tool calls lies above the floor of Theorem~\ref{thm:coffee}.
+(P2)~At matched compute, debate improves compute-bound tasks but not
+information-bound ones. (P3)~Redundant or low-capacity tool calls add little,
+even when numerous.
+
+\section{Related Work}
+
+The closed-system case for multi-agent debate is proved via the DPI
+in~\cite{shin2026}, and debate is modeled as a belief martingale
+in~\cite{choi2025}. Yang~et~al.~\cite{yang2026} bound multi-agent performance by
+task uncertainty and a sum of per-agent channel informations, the same
+``min$\{\Hh,\sum\text{channels}\}$'' shape with agents rather than tool calls as
+the channels. Usable information under computational constraints is due
+to~\cite{xu2020}; synergy is studied in partial information
+decomposition~\cite{williams2010}; directed information and feedback
+in~\cite{massey1990}; and Fano-based lower bounds for active learning
+in~\cite{raginsky2011}. To our knowledge, the per-call capacity budget for
+tool-using collectives with adaptive queries, and its combination with usable
+information, have not been stated before.
+
+\section{Limitations}
+
+The bounds limit information about a fixed external truth. They do not bound
+how much computation closing a reasoning gap takes, which is a question of
+computational complexity, and they do not cover outcomes the agents control
+(A4). Assumption (A1) requires accounting for everything a model absorbed in
+training; a missed side channel invalidates the accounting. Results are for
+finite alphabets; a noiseless continuous-output tool has unbounded capacity.
+Tightness is shown by example, not in general. We report no new experiments;
+the predictions of Section~\ref{sec:empirical} are untested here.
+
+\section{Conclusion}
+
+A collective of agents can be clever, but it cannot know more than it has
+seen. The Coffee Law bounds what a tool-using collective can learn by its
+starting data plus the capacity of its tool calls; the reasoning ceiling bounds
+what it can use by what it holds. Practically: if the answer is in the data,
+add reasoning; if it is not, add better observations of the world. Neither
+substitutes for the other.
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
