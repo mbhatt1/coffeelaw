@@ -36,7 +36,8 @@ basic facts in information theory, then says:
 
 So debate, self-reflection, critique rounds and majority votes cannot add a
 single bit about the world. They can only re-express what was already there
-([Theorem 1](formal_proofs.md#theorem-1)).
+([Theorem 1](formal_proofs.md#theorem-1)). Re-expressing can still be very
+valuable, as the next two sections show, but it adds no facts.
 
 ## But emergence is real
 
@@ -53,8 +54,10 @@ argument for shared boards and agent communication
 ([Theorem 2](formal_proofs.md#theorem-2)).
 
 But notice where that bit came from: it was in the starting data all along,
-split across two agents. Communication made it *accessible*. It didn't make it
-*exist*. Emergence rearranges the budget; it doesn't enlarge it.
+split across two agents. Communication made it *usable*. It didn't make it
+*exist*. Emergence rearranges the budget; it doesn't enlarge it. That
+difference between information that exists and information you can use turns
+out to be a second ceiling of its own.
 
 ## Only the world adds information
 
@@ -117,6 +120,48 @@ Here the bound is tight: a good strategy reaches it exactly. (That isn't
 guaranteed in general; sometimes no strategy can use a tool at full capacity.)
 A clever-looking strategy can waste the budget. Nothing exceeds it.
 
+## Reasoning is the second ceiling
+
+Having information isn't the same as being able to use it. Give a collective a
+large number `N` and ask for its prime factors: the answer is completely
+determined by `N`, so every bit of it is already in the data and the Coffee Law
+is satisfied with room to spare. Yet finding the factors can take an enormous
+amount of computation.
+
+So there are two ceilings, one stacked on the other
+([Theorem 8](formal_proofs.md#theorem-8)):
+
+    usable knowledge  ≤  available information  ≤  starting data + tool capacity
+                    ↑                          ↑
+              raised by reasoning        raised by tools
+
+- **Reasoning** (thinking longer, more agents, verification, a code interpreter
+  running on data you already have) raises *usable* knowledge toward the
+  information you hold. It can never push past it.
+- **Tools that observe the world** raise the information ceiling itself.
+
+This changes one claim from earlier. Debate adds no *facts*, but it can add
+*reasoning*: an agent that posts an intermediate result hands the others a
+computation they couldn't do themselves. In the XOR example, an agent that can
+only look at one bit at a time gets nothing from `(B₁, B₂)`; once someone posts
+`B₁ ⊕ B₂`, it gets the full bit. The information never changed; its usability
+did.
+
+In the noisy worked example above, the transcript holds 1.062 bits about the
+answer, but an agent that can only read one entry of it at a time can use just
+0.266 of them. The rest is a reasoning gap. More observations won't close it;
+more computation will.
+
+That splits tasks into two kinds:
+
+- **Information-bound** (forecasting, facts about the world, diagnosing a live
+  system): the Coffee Law binds. Add better tools.
+- **Compute-bound** (math, proofs, code, planning from known facts): the
+  information is there but hard to use. Add reasoning.
+
+Most real tasks are a mix, and the useful question is which ceiling you are
+hitting.
+
 ## Why real agents fall short of the bound
 
 The budget is a ceiling for every agent. Ideal reasoners can reach it; real
@@ -166,8 +211,9 @@ It's tempting to stretch a result like this. Here is where it stops.
 
 - **It doesn't cap intelligence.** It caps *information about a fixed external
   truth*. Working out the consequences of what you already know — proving
-  theorems, writing code, planning — is computation, and this bound says
-  nothing about it.
+  theorems, writing code, planning — is reasoning. Reasoning has its own
+  ceiling (the information you hold), but the Coffee Law says nothing about how
+  much computation it takes to reach it.
 - **It isn't a fixed ceiling.** The budget grows with every informative tool
   call. A collective with unlimited access to informative tools is limited only
   by how much uncertainty there was to resolve. (A tool whose output doesn't
@@ -187,18 +233,21 @@ It's tempting to stretch a result like this. Here is where it stops.
 
 If you're building agent systems, the bound turns into practical advice:
 
-1. **Don't expect debate to add facts.** Use it to surface and combine what the
-   agents already know — that's where its value is.
-2. **Spend effort on the inputs: tools and starting data.** More informative
+1. **Find out which ceiling you're hitting.** If the answer is in the data,
+   think harder. If it isn't, look at the world. Neither substitutes for the
+   other.
+2. **Use debate for reasoning, not facts.** It can combine what the agents
+   already know and share intermediate results. It can't discover anything.
+3. **Spend effort on the inputs: tools and starting data.** More informative
    calls, less noisy tools and better choices of what to query raise the
-   ceiling during the run; better starting data (a better-trained model, more
+   information ceiling during the run; better starting data (a better-trained model, more
    relevant context) raises it before the run. Nothing else does.
-3. **Route, don't just talk.** The board's biggest contribution with tools is
+4. **Route, don't just talk.** The board's biggest contribution with tools is
    telling the agent with the tool *which* query is informative — worth exactly
    the value of that information ([Theorem 5](formal_proofs.md#theorem-5)).
-4. **Guard against persuasion.** Confidence is not evidence. Weight messages by
+5. **Guard against persuasion.** Confidence is not evidence. Weight messages by
    what they reveal about the world, not by how certain they sound.
-5. **Check knowledge against the world.** Agreement is cheap. Verification,
+6. **Check knowledge against the world.** Agreement is cheap. Verification,
    experiments and held-out tests are what certify that a collective actually
    knows something.
 

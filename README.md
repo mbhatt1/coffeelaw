@@ -14,11 +14,18 @@ strategy, under four assumptions about the environment. Fano's inequality turns
 it into a floor on error. Debate and voting add nothing to the budget; only
 starting data and informative tool calls raise it.
 
+Underneath sits a second ceiling, **reasoning**:
+`usable knowledge ≤ available information ≤ budget`. More computation (thinking
+longer, more agents, a code interpreter) raises what the collective can *use*,
+up to what it *holds*, never past it
+([Theorem 8](formal_proofs/formal_proofs.md#theorem-8)).
+
 **Read it:** <https://mbhatt1.github.io/coffeelaw/>
 
 - [Blog post: Agent collectives have bounds](formal_proofs/agent-collectives-have-bounds.md)
 - [Formal proofs](formal_proofs/formal_proofs.md) — the Coffee Law is
-  [Theorem 7](formal_proofs/formal_proofs.md#theorem-7)
+  [Theorem 7](formal_proofs/formal_proofs.md#theorem-7); the reasoning ceiling is
+  [Theorem 8](formal_proofs/formal_proofs.md#theorem-8)
 - [Information geometry](formal_proofs/proof.md)
 - [From any agent to LLMs](formal_proofs/llm_specialization.md)
 
