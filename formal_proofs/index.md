@@ -1,7 +1,17 @@
-# Collective information acquisition
+# Coffee Law
 
-What can a group of communicating agents — LLMs, people, or programs — learn
-about an external truth `Θ`? These notes prove three things:
+> **Coffee Law.** A collective of agents can never know more about the world
+> than its starting data plus what its tools can carry:
+>
+>     I(Θ ; everything the collective holds)  ≤  min( H(Θ),  I(Θ ; D₀) + Σ_t C_t )
+>
+> where `Θ` is the truth, `D₀` is the starting data and `C_t` is the Shannon
+> capacity of round `t`'s tool calls ([Theorem 7](formal_proofs.md#theorem-7)).
+
+The law is universal in one precise sense: it holds for any kind of agent —
+LLMs, people, or programs — any number of them, any protocol and any query
+strategy, under [four assumptions](agent-collectives-have-bounds.md#assumptions)
+about the environment. These notes prove it in three steps:
 
 1. **Talking cannot create information.** A closed group that only communicates
    and computes knows at most what its starting data already contained
@@ -10,13 +20,10 @@ about an external truth `Θ`? These notes prove three things:
    zero bits each can jointly determine a full bit
    ([Theorem 2](formal_proofs.md#theorem-2)).
 3. **Only the world adds information, and only at the rate its channels allow.**
-   For any number of agents, any protocol and any adaptive query strategy:
-
-        I(Θ ; everything the collective holds)  ≤  min( H(Θ),  I(Θ ; D₀) + Σ_t C_t )
-
-   where `D₀` is the starting data and `C_t` is the Shannon capacity of round
-   `t`'s tool calls. Fano's inequality turns this into a floor on error
-   ([Theorem 7](formal_proofs.md#theorem-7)).
+   Summing tool-channel capacities over rounds gives the Coffee Law, and Fano's
+   inequality turns it into a floor on error
+   ([Theorem 7](formal_proofs.md#theorem-7)). Claim 1 is the Coffee Law with no
+   tools.
 
 None of this inspects the agents, so it applies to any learner. It bounds what
 can be *learned* about a fixed truth, not what can be *computed* from what is
@@ -29,7 +36,7 @@ already known, and not outcomes the agents themselves control.
 
 | Document | What it covers |
 |---|---|
-| [Formal proofs](formal_proofs.md) | [Definitions](formal_proofs.md#definitions) and [standard lemmas](formal_proofs.md#lemmas); [conservation](formal_proofs.md#theorem-1); [synergy](formal_proofs.md#theorem-2); [growth](formal_proofs.md#theorem-3); [tools](formal_proofs.md#theorem-4); [routing as value of information](formal_proofs.md#theorem-5); [consensus is not knowledge](formal_proofs.md#theorem-6); [the capacity budget](formal_proofs.md#theorem-7). |
+| [Formal proofs](formal_proofs.md) | [Definitions](formal_proofs.md#definitions) and [standard lemmas](formal_proofs.md#lemmas); [conservation](formal_proofs.md#theorem-1); [synergy](formal_proofs.md#theorem-2); [growth](formal_proofs.md#theorem-3); [tools](formal_proofs.md#theorem-4); [routing as value of information](formal_proofs.md#theorem-5); [consensus is not knowledge](formal_proofs.md#theorem-6); [the Coffee Law](formal_proofs.md#theorem-7). |
 | [Information geometry](proof.md) | The same results as the geometry of negative entropy: [KL as a Bregman divergence](proof.md#g1), [information gain as value of information](proof.md#g2), [the Fisher metric](proof.md#g3), [evidence vs. consensus flows](proof.md#g4), and [what is not proven](proof.md#limits). |
 | [From any agent to LLMs](llm_specialization.md) | What holds for [any agent](llm_specialization.md#part-a), then LLM-specific costs: [the regret bound](llm_specialization.md#b0), [miscalibration](llm_specialization.md#b1), [lossy messages](llm_specialization.md#b2), [persuasion](llm_specialization.md#b3), and [the combined per-round bound](llm_specialization.md#b4). |
 

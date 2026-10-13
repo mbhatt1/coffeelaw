@@ -13,6 +13,8 @@ that emergence can achieve, and it can be stated in one line:
 > **A collective can never know more about the world than its starting data
 > plus what its tools can carry.**
 
+We call this the **Coffee Law**.
+
 That isn't a hunch or an empirical trend. It's a theorem, and it holds for any
 kind of agent — LLMs, people, or programs — under four assumptions, listed
 [below](#assumptions). This post explains what it says, why
@@ -73,7 +75,7 @@ Every tool call is a communication channel from the world to the collective,
 and every channel has a maximum rate — its Shannon capacity. A call that returns
 one of 16 possible answers can carry at most 4 bits. A noisy call carries less.
 
-Put the pieces together and you get the bound
+Put the pieces together and you get the Coffee Law
 ([Theorem 7](formal_proofs.md#theorem-7)):
 
     information about the truth  ≤  min( total uncertainty,
@@ -214,8 +216,9 @@ error floor.
 (That comparison is based on the papers' summaries; their exact statements
 are worth reading in full.)
 
-The short version: **a collective's intelligence can be emergent, but its
-knowledge has a budget, and only the world can raise it.**
+The short version, and the Coffee Law in one sentence: **a collective's
+intelligence can be emergent, but its knowledge has a budget, and only the
+world can raise it.**
 
 ---
 
