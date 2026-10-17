@@ -19,7 +19,7 @@ the results hold for LLMs, people and programs alike.
 |---|---|
 | `CoffeeLaw/Basic.lean` | Gibbs' inequality and the log-sum inequality, from `log x ≤ x − 1` |
 | `CoffeeLaw/Markov.lean` | The Markov condition (division-free), `isMarkov_of_factor`, `interactive_isMarkov`, `adaptive_isMarkov` (`T` rounds of adaptive tool use), `isMarkov_iff_kernel`, and agents as kernels (`Kernel.ofFun`, `Kernel.seq`, `Kernel.comp`) |
-| `CoffeeLaw/Information.lean` | Mutual information; `dpi`, `dpi_of_isMarkov`, `collective_dpi` (`I(W; A) ≤ I(W; D₀, 𝒯)`); `mutualInfo_le_log_card` (`I(W; O) ≤ log \|𝒪\|`); `condEntropy_le_log_card` (`H(O | D) ≤ log \|𝒪\|`); `mutualInfo_append_le` (`I(W; D, O) ≤ I(W; D) + log \|𝒪\|`) |
+| `CoffeeLaw/Information.lean` | Mutual information; `dpi`, `dpi_of_isMarkov`, `collective_dpi` (`I(W; A) ≤ I(W; D₀, 𝒯)`); `mutualInfo_le_log_card` (`I(W; O) ≤ log \|𝒪\|`); `condEntropy_le_log_card` (`H(O \| D) ≤ log \|𝒪\|`); `mutualInfo_append_le` (`I(W; D, O) ≤ I(W; D) + log \|𝒪\|`) |
 
 Mutual information is in nats (`Real.log`); every inequality is homogeneous in
 `log`, so it holds in bits too.
