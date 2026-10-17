@@ -55,12 +55,11 @@ theorem dpi (μ : W → X → ℝ) (hμ : ∀ w x, 0 ≤ μ w x) (κ : Kernel X 
         log (μ w x * κ.k x a / ((∑ x', μ w x') * ((∑ w', μ w' x) * κ.k x a))) := fun w => by
     rw [sum_comm]
     refine sum_congr rfl fun x _ => ?_
-    rw [← κ.sum_one x, mul_sum, mul_sum, sum_mul]
+    rw [← mul_one (μ w x * log _), ← κ.sum_one x, mul_sum]
     refine sum_congr rfl fun a _ => ?_
-    rw [κ.sum_one x, mul_one]
     rcases (κ.nonneg x a).eq_or_lt with h | h
-    · rw [← h]; ring
-    · rw [← mul_assoc, mul_div_mul_right _ _ h.ne']
+    · rw [← h]; simp
+    · rw [← mul_assoc (∑ x', μ w x'), mul_div_mul_right _ _ h.ne']
       ring
   rw [sum_congr rfl fun w _ => hR w]
   -- For each (w, a), apply the log-sum inequality over x.
@@ -165,6 +164,40 @@ theorem mutualInfo_le_log_card {α β : Type*} [Fintype α] [Fintype β] (P : α
     linarith
   linarith
 
+/-- **Conditional entropy is at most `log |𝒪|`.** For a probability law `q` on `D × O`,
+`H(O | D) = ∑ q(d, o) log (q(d) / q(d, o)) ≤ log |𝒪|`. -/
+theorem condEntropy_le_log_card {D O : Type*} [Fintype D] [Fintype O] (q : D → O → ℝ)
+    (hq : ∀ d o, 0 ≤ q d o) (h1 : ∑ d, ∑ o, q d o = 1) :
+    ∑ d, ∑ o, q d o * log ((∑ o', q d o') / q d o) ≤ log (Fintype.card O) := by
+  have hcard : (0 : ℝ) < Fintype.card O := by
+    rcases isEmpty_or_nonempty O with hO | hO
+    · simp at h1
+    · exact_mod_cast Fintype.card_pos
+  -- Gibbs against `q(d) / |𝒪|`, termwise.
+  have g : ∀ d o, q d o - (∑ o', q d o') / Fintype.card O ≤
+      log (Fintype.card O) * q d o - q d o * log ((∑ o', q d o') / q d o) := by
+    intro d o
+    have hle : q d o ≤ ∑ o', q d o' := single_le_sum (fun o' _ => hq d o') (mem_univ o)
+    have key := sub_le_mul_log_div (hq d o) (div_nonneg ((hq d o).trans hle) hcard.le)
+      (fun h => div_pos (h.trans_le hle) hcard)
+    rcases (hq d o).eq_or_lt with h | h
+    · rw [← h] at key ⊢
+      simpa using key
+    · have p4 : 0 < ∑ o', q d o' := h.trans_le hle
+      rw [div_div_eq_mul_div, log_div (mul_pos h hcard).ne' p4.ne',
+        log_mul h.ne' hcard.ne'] at key
+      rw [log_div p4.ne' h.ne']
+      linarith
+  have gs := sum_le_sum fun d (_ : d ∈ univ) => sum_le_sum fun o (_ : o ∈ univ) => g d o
+  have lhs : ∑ d, ∑ o, (q d o - (∑ o', q d o') / Fintype.card O) = 0 := by
+    refine sum_eq_zero fun d _ => ?_
+    rw [sum_sub_distrib, sum_const, card_univ, nsmul_eq_mul, mul_div_assoc',
+      mul_div_cancel_left₀ _ hcard.ne', sub_self]
+  have rhs : ∑ d, ∑ o, (log (Fintype.card O) * q d o - q d o * log ((∑ o', q d o') / q d o)) =
+      log (Fintype.card O) - ∑ d, ∑ o, q d o * log ((∑ o', q d o') / q d o) := by
+    simp only [sum_sub_distrib, ← mul_sum, h1, mul_one]
+  linarith
+
 /-- **One tool result adds at most `log |𝒪|`.** For any probability law on world × record ×
 result, `I(W; D, O) ≤ I(W; D) + log |𝒪|`. Applied once per round, with the record extended
 by the round's queries (which add nothing, by `dpi`) and results, this gives the Coffee Law
@@ -175,96 +208,60 @@ theorem mutualInfo_append_le {D O : Type*} [Fintype D] [Fintype O] (P : W → D 
       mutualInfo (fun w d => ∑ o, P w d o) + log (Fintype.card O) := by
   unfold mutualInfo
   simp only [Fintype.sum_prod_type]
-  -- Names for the marginals.
-  set pw : W → ℝ := fun w => ∑ d, ∑ o, P w d o with hpw
-  set pdo : D → O → ℝ := fun d o => ∑ w, P w d o with hpdo
-  set pwd : W → D → ℝ := fun w d => ∑ o, P w d o with hpwd
-  set pd : D → ℝ := fun d => ∑ w, ∑ o, P w d o with hpd
-  -- Termwise: log P - log pw - log pdo ≤ (log pwd - log pw - log pd) + (log pd - log pdo).
-  have term : ∀ w d o, P w d o * log (P w d o / (pw w * pdo d o)) ≤
-      P w d o * log (pwd w d / (pw w * pd d)) + P w d o * log (pd d / pdo d o) := by
+  -- Termwise: log P - log p(w) - log p(d,o)
+  --   ≤ (log p(w,d) - log p(w) - log p(d)) + (log p(d) - log p(d,o)).
+  have term : ∀ w d o,
+      P w d o * log (P w d o / ((∑ d', ∑ o', P w d' o') * ∑ w', P w' d o)) ≤
+        P w d o * log ((∑ o', P w d o') /
+          ((∑ d', ∑ o', P w d' o') * ∑ w', ∑ o', P w' d o')) +
+        P w d o * log ((∑ o', ∑ w', P w' d o') / ∑ w', P w' d o) := by
     intro w d o
     rcases (hP w d o).eq_or_lt with h | h
-    · rw [← h]; ring_nf; simp
-    · have h_wd : P w d o ≤ pwd w d := single_le_sum (fun o' _ => hP w d o') (mem_univ o)
-      have h_do : P w d o ≤ pdo d o := single_le_sum (fun w' _ => hP w' d o) (mem_univ w)
-      have h_w : pwd w d ≤ pw w :=
-        single_le_sum (f := fun d' => ∑ o, P w d' o)
+    · rw [← h]; simp
+    · have hcomm : ∑ w', ∑ o', P w' d o' = ∑ o', ∑ w', P w' d o' := sum_comm
+      have h_wd : P w d o ≤ ∑ o', P w d o' := single_le_sum (fun o' _ => hP w d o') (mem_univ o)
+      have h_do : P w d o ≤ ∑ w', P w' d o := single_le_sum (fun w' _ => hP w' d o) (mem_univ w)
+      have h_w : ∑ o', P w d o' ≤ ∑ d', ∑ o', P w d' o' :=
+        single_le_sum (f := fun d' => ∑ o', P w d' o')
           (fun d' _ => sum_nonneg fun o' _ => hP w d' o') (mem_univ d)
-      have h_d : pdo d o ≤ pd d := by
-        simp only [hpdo, hpd]
-        exact sum_le_sum fun w' _ =>
-          single_le_sum (f := fun o' => P w' d o') (fun o' _ => hP w' d o') (mem_univ o)
-      have p1 : 0 < pwd w d := lt_of_lt_of_le h h_wd
-      have p2 : 0 < pdo d o := lt_of_lt_of_le h h_do
-      have p3 : 0 < pw w := lt_of_lt_of_le p1 h_w
-      have p4 : 0 < pd d := lt_of_lt_of_le p2 h_d
-      rw [log_div h.ne' (mul_pos p3 p2).ne', log_mul p3.ne' p2.ne',
+      have h_d : ∑ w', P w' d o ≤ ∑ o', ∑ w', P w' d o' :=
+        single_le_sum (f := fun o' => ∑ w', P w' d o')
+          (fun o' _ => sum_nonneg fun w' _ => hP w' d o') (mem_univ o)
+      have p1 : 0 < ∑ o', P w d o' := h.trans_le h_wd
+      have p2 : 0 < ∑ w', P w' d o := h.trans_le h_do
+      have p3 : 0 < ∑ d', ∑ o', P w d' o' := p1.trans_le h_w
+      have p4 : 0 < ∑ o', ∑ w', P w' d o' := p2.trans_le h_d
+      rw [hcomm, log_div h.ne' (mul_pos p3 p2).ne', log_mul p3.ne' p2.ne',
         log_div p1.ne' (mul_pos p3 p4).ne', log_mul p3.ne' p4.ne', log_div p4.ne' p2.ne']
       have := log_le_log h h_wd
       nlinarith
-  -- First part sums to I(W; D).
-  have part1 : ∑ w, ∑ d, ∑ o, P w d o * log (pwd w d / (pw w * pd d)) =
+  -- The first part sums to I(W; D).
+  have part1 : ∑ w, ∑ d, ∑ o, P w d o * log ((∑ o', P w d o') /
+        ((∑ d', ∑ o', P w d' o') * ∑ w', ∑ o', P w' d o')) =
       ∑ w, ∑ d, (∑ o, P w d o) *
-        log ((∑ o, P w d o) / ((∑ d', ∑ o, P w d' o) * ∑ w', ∑ o, P w' d o)) := by
-    refine sum_congr rfl fun w _ => sum_congr rfl fun d _ => ?_
-    rw [sum_mul]
-  -- Second part is the conditional entropy H(O | D), at most log |𝒪|.
-  have part2 : ∑ w, ∑ d, ∑ o, P w d o * log (pd d / pdo d o) ≤ log (Fintype.card O) := by
-    have swap : ∑ w, ∑ d, ∑ o, P w d o * log (pd d / pdo d o) =
-        ∑ d, ∑ o, pdo d o * log (pd d / pdo d o) := by
+        log ((∑ o, P w d o) / ((∑ d', ∑ o, P w d' o) * ∑ w', ∑ o, P w' d o)) :=
+    sum_congr rfl fun w _ => sum_congr rfl fun d _ => (sum_mul _ _ _).symm
+  -- The second part is H(O | D), at most log |𝒪|.
+  have part2 : ∑ w, ∑ d, ∑ o, P w d o * log ((∑ o', ∑ w', P w' d o') / ∑ w', P w' d o) ≤
+      log (Fintype.card O) := by
+    have swap : ∑ w, ∑ d, ∑ o, P w d o * log ((∑ o', ∑ w', P w' d o') / ∑ w', P w' d o) =
+        ∑ d, ∑ o, (∑ w, P w d o) * log ((∑ o', ∑ w', P w' d o') / ∑ w', P w' d o) := by
       rw [sum_comm]
       refine sum_congr rfl fun d _ => ?_
       rw [sum_comm]
-      exact sum_congr rfl fun o _ => by rw [hpdo, sum_mul]
+      exact sum_congr rfl fun o _ => (sum_mul _ _ _).symm
+    have hq1 : ∑ d, ∑ o, ∑ w, P w d o = 1 := by
+      rw [← h1]
+      calc ∑ d, ∑ o, ∑ w, P w d o = ∑ d, ∑ w, ∑ o, P w d o :=
+            sum_congr rfl fun d _ => sum_comm
+        _ = _ := sum_comm
     rw [swap]
-    have hpdo0 : ∀ d o, 0 ≤ pdo d o := fun d o => sum_nonneg fun w _ => hP w d o
-    have hpd_eq : ∀ d, pd d = ∑ o, pdo d o := fun d => by simp only [hpd, hpdo]; exact sum_comm
-    have hpdo1 : ∑ d, ∑ o, pdo d o = 1 := by
-      simp only [hpdo]
-      rw [sum_comm]
-      refine (sum_congr rfl fun w _ => ?_).trans h1
-      rw [sum_comm]
-    -- `O` is nonempty, since the law has total mass one.
-    have hcard : (0 : ℝ) < Fintype.card O := by
-      by_contra hc
-      have : Fintype.card O = 0 := by exact_mod_cast le_antisymm (not_lt.mp hc) (by positivity)
-      have : IsEmpty O := Fintype.card_eq_zero_iff.mp this
-      simp at h1
-    -- Gibbs against `pd d / |𝒪|`, termwise.
-    have g : ∀ d o, pdo d o - pd d / Fintype.card O ≤
-        log (Fintype.card O) * pdo d o - pdo d o * log (pd d / pdo d o) := by
-      intro d o
-      have hle : pdo d o ≤ pd d := by
-        rw [hpd_eq]; exact single_le_sum (fun o' _ => hpdo0 d o') (mem_univ o)
-      have hb : 0 ≤ pd d / Fintype.card O :=
-        div_nonneg (le_trans (hpdo0 d o) hle) hcard.le
-      have := sub_le_mul_log_div (hpdo0 d o) hb fun h => div_pos (lt_of_lt_of_le h hle) hcard
-      rcases (hpdo0 d o).eq_or_lt with h | h
-      · rw [← h] at this ⊢; simpa using this
-      · have p4 : 0 < pd d := lt_of_lt_of_le h hle
-        rw [div_div_eq_mul_div, log_div (mul_pos h hcard).ne' p4.ne',
-          log_mul h.ne' hcard.ne'] at this
-        rw [log_div p4.ne' h.ne']
-        linarith
-    have gs := sum_le_sum fun d (_ : d ∈ univ) => sum_le_sum fun o (_ : o ∈ univ) => g d o
-    simp only [sum_sub_distrib, ← mul_sum, ← sum_div] at gs
-    have hpd1 : ∑ d, ∑ _o : O, pd d / (Fintype.card O : ℝ) = 1 := by
-      have : ∀ d, ∑ _o : O, pd d / (Fintype.card O : ℝ) = pd d := fun d => by
-        rw [sum_const, card_univ, nsmul_eq_mul]; field_simp
-      rw [sum_congr rfl fun d _ => this d]
-      simp only [hpd_eq]
-      exact hpdo1
-    have hlog : ∑ d, log (Fintype.card O) * ∑ o, pdo d o = log (Fintype.card O) := by
-      rw [← mul_sum, hpdo1, mul_one]
-    rw [hpdo1, hpd1, hlog] at gs
-    linarith
-  calc _ ≤ ∑ w, ∑ d, ∑ o,
-        (P w d o * log (pwd w d / (pw w * pd d)) + P w d o * log (pd d / pdo d o)) :=
-        sum_le_sum fun w _ => sum_le_sum fun d _ => sum_le_sum fun o _ => term w d o
-    _ = ∑ w, ∑ d, ∑ o, P w d o * log (pwd w d / (pw w * pd d)) +
-        ∑ w, ∑ d, ∑ o, P w d o * log (pd d / pdo d o) := by
-        simp only [sum_add_distrib]
-    _ ≤ _ := by rw [part1]; linarith
+    exact condEntropy_le_log_card (fun d o => ∑ w, P w d o)
+      (fun d o => sum_nonneg fun w _ => hP w d o) hq1
+  have hsum := sum_le_sum fun w (_ : w ∈ univ) => sum_le_sum fun d (_ : d ∈ univ) =>
+    sum_le_sum fun o (_ : o ∈ univ) => term w d o
+  simp only [sum_add_distrib] at hsum
+  rw [part1] at hsum
+  linarith
 
 end CoffeeLaw

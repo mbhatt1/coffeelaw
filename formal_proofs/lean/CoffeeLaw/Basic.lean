@@ -57,8 +57,8 @@ lemma log_sum {ι : Type*} (s : Finset ι) (a b : ι → ℝ) (ha : ∀ i ∈ s,
     exact le_of_eq (sum_eq_zero fun i hi => by rw [hz i hi, zero_mul]).symm
   · obtain ⟨j, hj, haj⟩ : ∃ j ∈ s, 0 < a j := by
       by_contra hc
-      push_neg at hc
-      have : ∑ i ∈ s, a i ≤ 0 := sum_nonpos hc
+      have : ∑ i ∈ s, a i ≤ 0 :=
+        sum_nonpos fun i hi => not_lt.mp fun h => hc ⟨i, hi, h⟩
       linarith
     have hB : 0 < ∑ i ∈ s, b i := lt_of_lt_of_le (hab j hj haj) (single_le_sum hb hj)
     have hc : 0 < (∑ i ∈ s, a i) / ∑ i ∈ s, b i := div_pos hA hB

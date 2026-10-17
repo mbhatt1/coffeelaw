@@ -2,6 +2,7 @@
 Copyright (c) 2026 Manish Bhatt. Released under the MIT license.
 -/
 import CoffeeLaw.Basic
+import Mathlib.Algebra.BigOperators.Field
 
 /-!
 # The baseline invariant: `W — (D₀, 𝒯) — A` for any collective
@@ -67,6 +68,7 @@ def IsMarkov : Prop :=
 
 end Marginals
 
+omit [Fintype X] in
 /-- **Factorization implies Markov.** If the joint table splits as `F(w, x) · G(x, a)`, then
 `W — X — A`. No positivity, normalization or parametric form is needed. -/
 theorem isMarkov_of_factor (P : W → X → A → ℝ) (F : W → X → ℝ) (G : X → A → ℝ)
@@ -80,6 +82,7 @@ theorem isMarkov_of_factor (P : W → X → A → ℝ) (F : W → X → ℝ) (G 
   rw [e1, e2, e3]
   ring
 
+omit [Fintype X] in
 /-- Any agent applied to the record gives a Markov chain: `W — X — A` holds for the joint
 `μ(w, x) κ(x, a)`, whatever the law `μ` of world and record and whatever the kernel `κ`. -/
 theorem isMarkov_of_kernel (μ : W → X → ℝ) (κ : Kernel X A) :
@@ -108,9 +111,9 @@ theorem isMarkov_iff_kernel (P : W → X → A → ℝ) (hP : ∀ w x a, 0 ≤ P
       · exact div_nonneg (sum_nonneg fun w _ => hP w x a) (hpX x)
     · intro x
       by_cases hx : pX P x = 0
-      · simp only [hx, if_true, sum_const, card_univ, nsmul_eq_mul]
+      · simp only [hx, ite_true, sum_const, card_univ, nsmul_eq_mul]
         field_simp
-      · simp only [hx, if_false]
+      · simp only [hx, ite_false]
         rw [← sum_div]
         have : ∑ a, pXA P x a = pX P x := by
           simp only [pXA, pX]
@@ -123,8 +126,8 @@ theorem isMarkov_iff_kernel (P : W → X → A → ℝ) (hP : ∀ w x a, 0 ≤ P
             (mem_univ w)
         have ha : P w x a = 0 :=
           (sum_eq_zero_iff_of_nonneg fun a' _ => hP w x a').1 hw a (mem_univ a)
-        simp only [hx, if_true, hw, ha, zero_mul]
-      · simp only [hx, if_false]
+        simp only [hx, ite_true, hw, ha, zero_mul]
+      · simp only [hx, ite_false]
         rw [mul_div_assoc', eq_div_iff hx]
         exact hM w x a
   · rintro ⟨κ, hκ⟩
