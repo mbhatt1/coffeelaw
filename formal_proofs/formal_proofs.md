@@ -1,7 +1,10 @@
 # Formal proofs: the Coffee Law and collective information acquisition
 
 *The proofs below are written in standard mathematical style and checked
-numerically on every finite example; they are not machine-verified.*
+numerically on every finite example. The core of [Theorem 7](#theorem-7) (the
+Markov condition for any collective, the data-processing inequality and the
+per-call output-entropy bound) is also proved in Lean 4; see
+[Machine-checked core](#lean). The other theorems are not machine-verified.*
 
 All random variables are discrete with finite support on a common finite
 probability space `(Ω, 2^Ω, ℙ)`. Logarithms are base 2; `0 log 0 := 0`.
@@ -255,7 +258,10 @@ In round `t`:
 
         C_t := sup_{q, d} Cap(K_{t,q,d})   ≤   log₂ |𝒪_t|,
 
-where `𝒪_t` is the set of possible results in round `t` (all calls together).
+where `𝒪_t` is the set of possible observable results in round `t` (all calls
+together, including status codes, errors and any latency the agents can read).
+[Theorem 20](extensions.md#theorem-20) counts `|𝒪_t|` from a tool's byte or
+token limit and response schema, which gives a budget read off the interfaces.
 
 **Theorem 7 (Coffee Law; capacity budget).** Let `B_T := I(Θ ; D₀) + Σ_{t<T} C_t`. Then
 
@@ -331,6 +337,36 @@ falls strictly below the budget. Machine-checked in [`verify.py`](https://github
   separate compute bound.
 - Nothing in the proof inspects the agents. It applies to LLMs, people, and
   programs alike.
+
+<a id="lean"></a>
+
+**Machine-checked core (Lean 4).** The step of the proof that does not depend
+on the agents, the *baseline invariant*
+
+        W  —  (D₀, 𝒯)  —  A,
+
+is proved in Lean 4 with Mathlib in
+[`lean/`](https://github.com/mbhatt1/coffeelaw/tree/main/formal_proofs/lean).
+Here `W` is the world, `D₀` the starting data, `𝒯` the full tool transcript
+(every query and result) and `A` anything the collective outputs. The
+formalization is non-parametric: a law is any nonnegative finite table summing
+to one, and agents, query policies, tools and output maps are arbitrary
+functions of the right arguments, so nothing depends on how an agent is built.
+
+| Lean theorem | Statement |
+|---|---|
+| `isMarkov_of_factor` | A joint table of the form `F(w, x) · G(x, a)` satisfies `W — X — A` |
+| `interactive_isMarkov`, `adaptive_isMarkov` | Every interactive collective (any agents, protocol, internal randomness independent of the world, and adaptive queries over `T` rounds; tools see the agents only through their queries, (A2)–(A3)) satisfies `W — (D₀, 𝒯) — A` |
+| `isMarkov_iff_kernel` | For a probability law, `W — X — A` holds iff `A` is a stochastic function of `X` |
+| `Kernel.ofFun`, `Kernel.seq`, `Kernel.comp` | Agents built from functions and private randomness, agents in sequence, and post-processing are all kernels |
+| `dpi`, `dpi_of_isMarkov`, `collective_dpi` | `I(W; A) ≤ I(W; D₀, 𝒯)`: no collective out-knows its record ([Lemma 1.5](#lemmas)) |
+| `mutualInfo_le_log_card` | `I(W; O) ≤ log \|𝒪\|`: a tool with `\|𝒪\|` possible results reveals at most `log \|𝒪\|` |
+| `mutualInfo_append_le` | `I(W; D, O) ≤ I(W; D) + log \|𝒪\|`: one round of the law with capacity replaced by its output-entropy bound ([Theorem 20](extensions.md#theorem-20)) |
+
+The `T`-round sum then follows by applying `dpi` to the agents' steps (zero
+gain) and `mutualInfo_append_le` to each tool result. What Lean does not check:
+the capacity form `C_t` (a maximum over input laws), Fano's inequality, and the
+other theorems. The build fails on any `sorry`.
 
 **Related work.** The closed-system special case (`C_t = 0`) for multi-agent
 debate appears in Shin, *The Reasoning Trap* ([arXiv:2605.01704](https://arxiv.org/abs/2605.01704), 2026), and a
@@ -621,8 +657,11 @@ Functions*, STOC 1989).
   equality condition (Theorem 7′), compute-gated channels (11), the worst-case
   law (12), acting (13), communication (14), a changing world (15), adversaries
   and provenance (16), continuous truths (17), what a model's weights know
-  (Proposition 18), where to spend (Proposition 19), measuring the quantities,
-  and what remains open.
+  (Proposition 18), where to spend (Proposition 19), tool capacity from the
+  output format (Theorem 20), measuring the quantities, and what remains open.
+- [Machine-checked core](#lean): the Markov condition `W — (D₀, 𝒯) — A` for
+  any collective, the data-processing inequality and the output-entropy bound
+  are proved in Lean 4.
 - Theorems 2, 5, 6 and the tightness of [Theorem 7](#theorem-7) reduce to finite joint-law computations, each verified
   exactly in [`verify.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify.py) (ALL PASSED).
 - [Lemmas 6.1–6.2](#theorem-5) supply the value-of-information half (convex `V`, martingale

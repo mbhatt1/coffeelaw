@@ -41,6 +41,7 @@ jobs:
           python3 verify_llm.py
           python3 verify_geometry.py
           python3 verify_extensions.py
+          python3 verify_capacity.py
 
       - name: Configure Pages
         if: github.event_name != 'pull_request'
@@ -56,9 +57,20 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
 
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the Lean proofs (fails on any sorry)
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: formal_proofs/lean
+          build-args: "--wfail"
+
   deploy:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, lean]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

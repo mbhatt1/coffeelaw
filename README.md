@@ -44,10 +44,16 @@ task ([Theorems 9–10](formal_proofs/formal_proofs.md#theorem-9)).
 cd formal_proofs
 python3 verify.py && python3 verify_llm.py && python3 verify_geometry.py
 python3 verify_extensions.py   # needs numpy
+python3 verify_capacity.py
+cd lean && lake exe cache get && lake build   # Lean 4 proofs
 ```
 
-The checks are exact numerical evaluations of the worked examples plus
-randomized tests of the general inequalities, not proof-assistant proofs. See
+The Python checks are exact numerical evaluations of the worked examples plus
+randomized tests of the general inequalities. The core of the law (the Markov
+condition `W — (D₀, 𝒯) — A` for any collective, data processing, and the
+output-entropy bound `I(W; O) ≤ log |𝒪|` per tool call) is proved in Lean 4.
+[Theorem 20](formal_proofs/extensions.md#theorem-20) turns tool capacity into a
+number read off the interface: byte or token limits and response schemas. See
 [`formal_proofs/README.md`](formal_proofs/README.md) for details.
 
 [MIT License](LICENSE)

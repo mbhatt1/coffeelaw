@@ -23,6 +23,7 @@ calls, `O_{t+1} ∼ K_t(· | Θ, Q_t, D_t)` the results, `S_t = (D_t, ξ_t, Q_t)
 | Continuous quantities | [Theorem 17](#theorem-17): the continuous Coffee Law |
 | What "knowledge in the weights" means | [Proposition 18](#prop-18): possible worlds |
 | Where to spend: tools or reasoning? | [Proposition 19](#prop-19): headroom |
+| Capacity is rarely known for a real tool | [Theorem 20](#theorem-20): capacity from the output format |
 | Can any of this be measured? | [Measuring the quantities](#measuring) |
 | What is still open | [Open problems](#open) |
 
@@ -444,6 +445,110 @@ levers are open; with a noise-free tool after two calls, information headroom is
 zero and only reasoning can help.
 
 --------------------------------------------------------------------------------
+<a id="theorem-20"></a>
+
+## Theorem 20 — Tool capacity from the output format
+
+[Theorem 7](formal_proofs.md#theorem-7) charges each round its Shannon capacity
+`C_t`, a maximum over input laws that is rarely known for a real tool. This
+theorem replaces it with a number read off the tool's interface: the size of the
+set of results the call can return. No model of the tool is needed.
+
+**Setup.** The *observable result* `O` of a call is everything the call writes
+into the record: the payload, the status or error code, any truncation flag, and
+the latency or any other side effect the agents can read. `𝒪` is the set of
+possible observable results. If the harness passes only `f(O)` into the record
+(for example output cut to `N` tokens), the observable result is `f(O)`.
+
+**Theorem 20.** Under (A1)–(A4):
+
+(a) *Entropy bound.* For every query `q`, history `d` and input law,
+
+        I(Θ ; O | S_t = s)  ≤  H(O | S_t = s)  ≤  log₂ |𝒪|,
+
+so `Cap(K_{t,q,d}) ≤ log₂ |𝒪|`. With a noise floor,
+`Cap(K_{t,q,d}) ≤ log₂ |𝒪| − min_θ H(K_{t,q,d}(· | θ))`.
+
+(b) *Several calls.* If round `t` makes `k` calls with result sets
+`𝒪¹, …, 𝒪ᵏ`, then `C_t ≤ Σ_j log₂ |𝒪ʲ|`. The results may be correlated; no
+independence is needed.
+
+(c) *Budget from interfaces.* Summing over rounds,
+
+        I(Θ ; D_T)  ≤  min( H(Θ),  I(Θ ; D₀) + Σ_{calls} log₂ |𝒪_call| ).
+
+(d) *Counting `𝒪`.* For common formats, exactly:
+
+| Result format | `\|𝒪\|` | `log₂ \|𝒪\|` |
+|---|---|---|
+| boolean (pass/fail) | `2` | `1` |
+| one of `k` values (enum, label, status code) | `k` | `log₂ k` |
+| integer in `[a, b]` | `b − a + 1` | `log₂(b − a + 1)` |
+| exactly `L` bytes | `256^L` | `8L` |
+| at most `L` bytes | `(256^{L+1} − 1)/255` | `< 8L + 0.0057` |
+| at most `L` tokens, vocabulary `V` | `Σ_{ℓ=0}^{L} V^ℓ` | `< L log₂ V + log₂(V/(V−1))` |
+| record `{f₁: T₁, …, f_m: T_m}` | `Π_i \|T_i\|` | `Σ_i log₂ \|T_i\|` |
+| one of several shapes `T₁ \| … \| T_m` (incl. errors) | `Σ_i \|T_i\|` | `≤ max_i log₂ \|T_i\| + log₂ m` |
+| optional `T` | `\|T\| + 1` | `≤ log₂ \|T\| + 1` |
+| list of at most `n` items of `T` | `Σ_{i=0}^{n} \|T\|^i` | |
+| ranked top `k` of `N` items | `N!/(N−k)!` | `< k log₂ N` |
+| set of `k` of `N` items | `C(N, k)` | |
+| latency read at resolution `δ` up to timeout `τ` | multiply by `⌊τ/δ⌋ + 1` | add `log₂(⌊τ/δ⌋ + 1)` |
+
+*Proof.* (a) Fix `s = (d, x, q)`. `I(Θ;O|S=s) = H(O|S=s) − H(O|Θ,S=s)`, and
+`H(O|Θ,S=s) ≥ 0`, so `I ≤ H(O|S=s) ≤ log₂|𝒪|` (entropy is maximized by the
+uniform law, by Gibbs' inequality, [Lemma 1.1](formal_proofs.md#lemmas)). For the
+noise floor, `H(O|Θ,S=s) = Σ_θ p(θ|s) H(K(·|θ)) ≥ min_θ H(K(·|θ))`. Taking the
+maximum over input laws gives the capacity bounds. (b) Apply (a) to the joint
+result `(O¹, …, Oᵏ)`, whose set has `Π_j |𝒪ʲ|` elements. (c) Put (b) into step 3
+of the proof of [Theorem 7](formal_proofs.md#theorem-7). (d) Counting: products
+for records, disjoint unions for alternatives, and geometric sums for
+variable-length strings and lists, e.g.
+`Σ_{ℓ≤L} 256^ℓ = (256^{L+1} − 1)/255 < 256^L · 256/255`. ∎
+
+**Machine checks.** The two information-theoretic steps, `I(W; O) ≤ log |𝒪|`
+and `I(W; D, O) ≤ I(W; D) + log |𝒪|` (one round of (c)), are proved in Lean 4
+([`lean/CoffeeLaw/Information.lean`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/lean/CoffeeLaw/Information.lean),
+`mutualInfo_le_log_card` and `mutualInfo_append_le`). The counts in (d), the
+bounds in (a)–(b) on random channels (Blahut–Arimoto), and the examples below are
+checked in [`verify_capacity.py`](https://github.com/mbhatt1/coffeelaw/blob/main/formal_proofs/verify_capacity.py).
+
+**What it gives for real tools.**
+
+| Tool | `log₂ \|𝒪\|` (bits per call) |
+|---|---|
+| unit test, pass/fail | 1 |
+| test runner, pass/fail + exit code | 9 |
+| HTTP status code only | 8.97 |
+| sensor, 12-bit ADC | 12 |
+| weather API `{status: 3 values, temp_c: −90..60, conditions: 12 values, alerts: ≤3 of 20}` | 25.45 |
+| classifier, 1000 labels or one of 8 error codes | 9.98 |
+| retrieval, ranked top 10 of 10⁶ documents | 199.3 |
+| text reply of at most 280 bytes | 2240.0 |
+| LLM tool reply of at most 2000 tokens, `V` = 100,277 | 33,227 |
+
+**Reading the table.**
+- *Small formats bind.* A test suite run as pass/fail, a status code, a sensor
+  or a classifier caps each call at a few bits, whatever the tool computes
+  internally. Identifying one of `2²⁰` suspects with error at most 5% then
+  needs at least 18 pass/fail calls ([Corollary 7.1](formal_proofs.md#theorem-7)).
+  The bound is attained: bisection with `k` pass/fail tests reveals exactly `k`
+  bits of a uniform `k`-bit truth.
+- *Rich formats do not bind.* For free text the format bound is far above
+  `H(Θ)` for most questions, so `min(H(Θ), ·)` takes over and the realized gain
+  of [Theorem 7′](#theorem-7-prime)(a) is the quantity to estimate. The format
+  bound still caps an episode: 50 calls each truncated to 2000 tokens carry at
+  most 1.7 Mbit.
+- *Truncation is a capacity cap.* What the harness drops never enters the
+  record, so cutting tool output to `N` tokens caps the call at
+  `N log₂ V + log₂(V/(V−1))` bits, however much the tool produced.
+- *Side channels belong in `𝒪`.* A call whose payload is constant but whose
+  latency depends on `Θ` has payload capacity 0 and still leaks information
+  (0.53 bits per call in `verify_capacity.py`). Leaving latency, error text,
+  headers or response size out of `𝒪` violates (A1). Counting them restores
+  the bound.
+
+--------------------------------------------------------------------------------
 <a id="measuring"></a>
 
 ## Measuring the quantities
@@ -454,10 +559,12 @@ The bounds are only as useful as the quantities in them can be estimated.
   actually runs, `H(Θ)` minus its held-out log-loss lower-bounds the team's
   usable information. Xu et al. (ICLR 2020) give PAC-style guarantees for
   estimating usable information under computational constraints.
-- **Tool capacity** is bounded by the size of the answer space, and for noisy
-  tools by measured error rates. A test that flakes with probability `p` has
-  capacity at most `1 − h(p)`; a tool returning one of `m` answers has at most
-  `log₂ m` bits.
+- **Tool capacity** is bounded by the size of the result space, counted from
+  the tool's interface ([Theorem 20](#theorem-20)): `log₂ |𝒪|` bits per call,
+  with `|𝒪|` read off the byte or token limit, the response schema, the error
+  codes and any observable latency. For noisy tools, measured error rates
+  tighten it: a test that flakes with probability `p` has capacity at most
+  `1 − h(p)`.
 - **Available information**, and `I(W ; M)` for a pretrained model, are well
   defined but hard to estimate: they are maxima over all computations. The best
   usable-information estimate is a lower bound. When no good estimate exists,
@@ -490,8 +597,10 @@ mathematics:
    bounds the cost of miscalibration and persuasion from above. Showing that a
    given model *must* incur such losses requires measurement, not proof.
 5. **Measuring the inputs.** `I(W ; M)` for a pretrained model
-   ([Proposition 18](#prop-18)), and `C_t` for real tools, are well defined but
-   hard to estimate. The theory says where they enter, not what they are.
+   ([Proposition 18](#prop-18)) is well defined but hard to estimate. For
+   tools, [Theorem 20](#theorem-20) gives an upper bound on `C_t` read off the
+   interface, but for rich formats it is loose and the realized gain must be
+   estimated.
 6. **Trading one ceiling for another.** The information, compute and
    communication ceilings each hold, so their minimum does too. Results on
    *trading* them — spending compute to save communication, or tool calls to
@@ -500,8 +609,11 @@ mathematics:
    results changes its starting data over time. A continual-learning version of
    the law, which tracks how much each episode's results can add to the
    weights, is not given here.
-8. **Formal verification.** The proofs are mathematical and checked numerically
-   on finite examples; none is machine-verified (for example in Lean).
+8. **Formal verification.** The Markov condition `W — (D₀, 𝒯) — A` for any
+   collective, the data-processing inequality and the output-entropy bounds
+   are proved in Lean 4 ([Machine-checked core](formal_proofs.md#lean)). The
+   capacity form of the law, Fano's inequality and the other theorems are
+   checked numerically on finite examples only.
 9. **Incentives.** The theory says what agents *can* learn and do, not what they
    will *try* to do. Reward hacking, persistence on impossible tasks and agents
    adopting one another's goals concern objectives; modeling them needs game
