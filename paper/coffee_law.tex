@@ -66,11 +66,11 @@ under standard cryptographic assumptions, infeasible. \emph{Communication} (comm
 agents is unusable to any one of them until enough is exchanged, about $n/2$ bits
 for some $n$-bit tasks even with unlimited computation. Adding agents, adding
 communication, adding computation and adding access to the world are therefore
-different interventions acting on different ceilings. The decomposition explains
-published findings that otherwise look contradictory, yields a diagnostic for
+different interventions acting on different ceilings. The decomposition is consistent
+with, and organizes, published findings that otherwise look contradictory, yields a diagnostic for
 which ceiling binds, and makes predictions that a single notion of capability
 does not, such as that model diversity and prompt diversity help on different
-tasks. Proofs are short; every finite example is checked numerically in public code.
+tasks. The proofs are elementary; every finite example is checked numerically in public code.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -127,6 +127,11 @@ collectives (Theorem~\ref{thm:comm}); and a channel account of sandboxing
 (Theorem~\ref{thm:gated}).
 \end{itemize}
 \ifnum\PaperFinal=1 \IEEEpubidadjcol\fi
+\ifnum\PaperShort=0
+We call the budget bound the Coffee Law after its picture (Section~\ref{sec:coffee}):
+each tool call is a narrow pipe from the world, and talking only moves water
+between cups. It is a bound, not a law of nature.
+\fi
 Full proofs and numerical checks of every finite example are
 \ifnum\PaperAnon=1 provided as supplementary material.\footnote{Supplementary
 material: proofs and check scripts, to be released publicly on acceptance.}%
@@ -514,7 +519,8 @@ estimators for the quantities.
 
 Table~\ref{tab:evidence} lists predictions of the theory and the published
 findings we found that bear on them, including mixed ones; none contradicts
-it. Two points deserve care. First, the
+it\ifnum\PaperShort=0, though we assembled the table after developing the theory and the verdicts are
+ours\fi. Two points deserve care. First, the
 theory does not predict that debate is worse than other methods; it predicts
 that debate is worth its compute, so at matched compute it should perform about
 as well as self-consistency or voting. Small gaps in either
@@ -690,7 +696,7 @@ untested.
 
 \section{Conclusion}
 
-Collective intelligence is not one quantity, and it does not have one limit. A
+Here, collective intelligence is not one quantity and has no single limit. A
 team of agents cannot know more than it has observed, use more than it holds, or
 combine what its members hold without exchanging enough, for tasks of high
 communication complexity; each of these is bounded
