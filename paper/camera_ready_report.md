@@ -133,3 +133,22 @@ resource limits this collective, and what intervention removes that limit?"
    exact text at camera-ready time.
 5. Supplementary material for the anonymous version: an anonymized copy of the
    proofs and check scripts, if the venue allows it.
+
+## Preprint pass (EasyChair Preprints, full named version)
+- Re-verified against sources: Li et al. (30.1% vs 80.7%, ICML 2026), Zhao et al.
+  (14 models), Yang et al. (two diverse agents match sixteen identical),
+  Du et al. (plateau after 8 calls, from one model in three domains; Table II
+  wording narrowed). All 7 registry numbers re-run and match.
+- Limitations now says the baseline invariant is machine-verified in Lean.
+- "Recently reported incidents" made singular (one cited incident).
+- PDF title/author metadata set for the named versions (empty in the anonymous one).
+- Not verified: OpenAI (2026) incident report; classic references.
+
+## Full verification pass (web + independent math audit)
+Six parallel audits: classic references, 22 evidence-table references, the OpenAI incident, prior art, and every theorem (with re-run of the check scripts).
+- **Bib fixes**: Smit et al. author order; Zhao et al. venue (arXiv lists COLM 2026, not ICLR main; unconfirmed); Shin subtitle; InfoMosaic missing author (Xiong); OpenAI date. Five related-work references added (Ao et al., Zhang et al., Lutati, Rizvi-Martel et al., Finzi et al.), authors taken from arXiv pages.
+- **Characterizations narrowed**: Shin (faithfulness, not accuracy), Choi (expected belief, martingale conditions), Yang (usable evidence), Kandpal, Li et al. (voting), Pu et al., Liu et al., Smit et al.
+- **Math fixes**: Theorem 6 password example is a separate direct computation (the capacity bound is loose there); drift timing stated; one-sided-flake wording; (A3) independence from internal coins; "n >= 4" in the debugging example; pooling model behind 1/6; summary identity needs M a function of D; incident figure 0.266 now states its policy and reader.
+- **Abstract**: "verified exactly" -> "checked numerically" (scripts mix exact fractions with float logs and check Theorem 5 only at small n).
+- **Sandbox sentence** reworded to match OpenAI's technical report (sandbox bypass and compromise of an external provider; not clearly answer retrieval).
+- **Still unverified**: OpenAI post itself (403; read via the technical report and mirrors); Lean build completion (no sorry/axiom found, `lake build` not confirmed); Lindsey's lemma only via secondary sources; Ao et al. and Rizvi-Martel et al. read from abstracts only.

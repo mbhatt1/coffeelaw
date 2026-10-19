@@ -14,7 +14,8 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,decorations.pathreplacing}
 \usepackage[hidelinks]{hyperref}
-\ifnum\PaperAnon=1 \hypersetup{pdfauthor={}}\fi
+\ifnum\PaperAnon=1 \hypersetup{pdfauthor={}}\else
+\hypersetup{pdfauthor={Manish Bhatt},pdftitle={The Coffee Law: Information, Reasoning and Communication Ceilings for Tool-Using Agent Collectives}}\fi
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{proposition}{Proposition}
@@ -69,7 +70,7 @@ different interventions acting on different ceilings. The decomposition explains
 published findings that otherwise look contradictory, yields a diagnostic for
 which ceiling binds, and makes predictions that a single notion of capability
 does not, such as that model diversity and prompt diversity help on different
-tasks. Proofs are short; every finite example is verified exactly in public code.
+tasks. Proofs are short; every finite example is checked numerically in public code.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -126,7 +127,7 @@ collectives (Theorem~\ref{thm:comm}); and a channel account of sandboxing
 (Theorem~\ref{thm:gated}).
 \end{itemize}
 \ifnum\PaperFinal=1 \IEEEpubidadjcol\fi
-Full proofs and exact numerical checks of every finite example are
+Full proofs and numerical checks of every finite example are
 \ifnum\PaperAnon=1 provided as supplementary material.\footnote{Supplementary
 material: proofs and check scripts, to be released publicly on acceptance.}%
 \else public.\footnote{\url{https://github.com/mbhatt1/coffeelaw}}\fi
@@ -183,7 +184,7 @@ use fresh randomness $\zeta_t$; and $D_{t+1}=(D_t,\xi_t,Q_t,O_{t+1},\zeta_t)$.
 team only through $D_0$ and tool results. (A2)~\emph{Coin flips are honest}:
 $\xi_t,\zeta_t$ are independent of $\Theta$ and of everything before them.
 (A3)~\emph{Tools are channels from the world}: given $(\Theta,Q_t,D_t)$, $O_{t+1}$
-has law $K_t$ (tools may be adaptive or stateful). (A4)~\emph{The truth is
+has law $K_t$ and is independent of $\xi_t$ (tools may be adaptive or stateful). (A4)~\emph{The truth is
 fixed}: the team's actions do not change $\Theta$. (A1) is not an assumption
 about the agents but the definition of which channels exist;
 Theorem~\ref{thm:gated} treats agents that can open new ones, and
@@ -192,7 +193,8 @@ Section~\ref{sec:ext} relaxes the others.
 \noindent\textbf{Capacity.} For each query $q$ and history $d$, the tool is a
 channel $\theta\mapsto K_t(\cdot\mid\theta,q,d)$ with capacity
 $\mathrm{Cap}(K_{t,q,d})=\max_{P}\I(\Theta;O)$, the most it can ever reveal per
-call. Let $C_t=\sup_{q,d}\mathrm{Cap}(K_{t,q,d})$. Always
+call. Let $C_t=\sup_{q,d}\mathrm{Cap}(K_{t,q,d})$ (a round of several parallel calls is one
+joint channel). Always
 $C_t\le\min\{\log|\mathcal O_t|,\log|\mathrm{supp}\,\Theta|\}$; a pass/fail test
 has $C_t\le 1$ bit.
 
@@ -252,7 +254,7 @@ rounds, however many agents run and however they talk.
 \end{corollary}
 
 \noindent\textbf{Example: debugging.} A test run returns pass or fail, so it
-carries at most one bit. If the bad commit is equally likely to be any of $n$, identifying it
+carries at most one bit. If the bad commit is equally likely to be any of $n\ge4$, identifying it
 with error at most $\varepsilon$ needs at least $(1-\varepsilon)\log n-1$ test
 runs whatever the team does (Corollary~\ref{cor:rounds}); binary search
 (\texttt{git bisect}) uses $\lceil\log n\rceil$. A flaky test that misreports with probability $p$ carries at most
@@ -261,7 +263,7 @@ $1-h(p)$ bits, raising the minimum by the factor $1/(1-h(p))$.
 \noindent\textbf{Exact accounting and tightness.} The proof gives the identity
 $\I(\Theta;D_T)=\I(\Theta;D_0)+\sum_t\E_s[\I(\Theta;O_{t+1}|S_t=s)]$: total
 information is the sum of what each call actually revealed. The bound is tight
-exactly when every call is used at full capacity: almost every posterior is a
+exactly when every call is used at full capacity (and the suprema are attained): almost every posterior is a
 capacity-achieving input for the chosen tool, and each chosen tool attains
 $C_t$. For rich tools (a web page),
 the realized per-call gain is the binding quantity; the capacity form bites for
@@ -336,9 +338,10 @@ The incident example is now exact. ``Which server is failing?'' is
 tools help. ``Is this patch correct?'' is \emph{compute-bound}: the left gap is
 large, and reasoning helps. A code interpreter run on data already held is
 reasoning (it enlarges $\V$); a tool that observes the world is information (it
-raises $C_t$). In Table~\ref{tab:tight}'s noisy example, the record holds 1.062
-bits but a one-look agent can use only 0.266; the rest is a reasoning gap that
-more observations cannot close.
+raises $C_t$). In the noisy example of Table~\ref{tab:tight}, with the first bit asked chosen at
+random, the record holds 1.062 bits but an agent that reads a single answer,
+without seeing which bit was asked, can use only 0.266; the rest is a reasoning
+gap that more observations cannot close.
 
 \ifnum\PaperShort=0
 \noindent\textbf{Imperfect agents.} Real agents fall further below the chain
@@ -347,11 +350,11 @@ correct posterior $b^*$ costs at most
 \[
 2U\,\mathrm{TV}(b^*,\hat b)+\delta\;\le\;2U\sqrt{(\ln2/2)\,\KL(b^*\|\hat b)}+\delta
 \]
-for utility range $U$ and own suboptimality $\delta$. A summary $M$ of data $D$ loses exactly
+for utility range $U$ and $\delta$ the agent's suboptimality under its own belief. A summary $M$ of data $D$ (a randomized function of $D$) loses exactly
 $\E\,\KL(p(\cdot|D)\|p(\cdot|M))=\I(\Theta;D)-\I(\Theta;M)$. And a confident
-message carrying zero information can flip a correct agent: with belief
-$(0.6,0.4)$ for the truth, giving weight $\alpha>1/6$ to a constant false claim
-flips the answer.
+message carrying zero information can flip a correct agent: a receiver with belief
+$(0.6,0.4)$ that linearly pools it with weight $\alpha$ on a constant false
+claim changes its most likely answer exactly when $\alpha>1/6$.
 \fi
 
 \section{Paying for Reasoning}\label{sec:compute}
@@ -424,35 +427,36 @@ $\I(\Theta;x,\Pi)\le\log(1+2^{L+1-n/2})$, even with unlimited computation.
 \begin{proof}
 (a)~$\I(\Theta;\Pi|D^1)\le\Hh(\Pi)\le L$. (b)~Append agent~1's output as one more
 bit. Inner product has discrepancy at most $2^{-n/2}$ (Lindsey's
-lemma~\cite{chor1988,kushilevitz1997}), so an $(L{+}1)$-bit protocol is correct
+lemma~\cite{kushilevitz1997}; see also~\cite{chor1988}), so an $(L{+}1)$-bit protocol is correct
 with probability at most $\frac12+2^{L-n/2}$; apply Lemma~\ref{lem:guess} to
 agent~1's exact posterior.
 \end{proof}
 
-\noindent Parity splits cheaply (each agent posts one bit); inner product needs
+\noindent The parity of all $n$ bits splits cheaply (each agent posts one bit); inner product needs
 about $n/2$ bits. With more agents, the same bounds apply to the bits crossing
 any cut that separates the inputs. This ceiling holds even when information and compute are
 unlimited.
 
 \section{Beyond the Assumptions}\label{sec:ext}
 
-Each result relaxes one assumption; full proofs and exact checks are in the
+Each result relaxes one assumption; full proofs and numerical checks are in the
 accompanying notes (footnote~1).
 
 \begin{theorem}[Reasoning can open channels: sandboxes]\label{thm:gated}
 Let $A_S(d)$ be the queries a team can issue from record $d$ within compute $S$.
 Then $\I(\Theta;D_T)\le\I(\Theta;D_0)+\sum_t\sup_{d,\,q\in A_S(d)}\mathrm{Cap}(K_{t,q,d})$,
-nondecreasing in $S$. If a tool reveals a uniform 2-bit $\Theta$ only after a
-uniform $k$-bit password is found, $S$ guesses give at most
+nondecreasing in $S$. The bound can be loose: if a tool reveals a uniform 2-bit
+$\Theta$ only after a uniform $k$-bit password is found, every password is a
+reachable query, yet by direct computation $S$ guesses give at most
 $\min\{1,S/2^k\}\cdot2$ bits, with equality for distinct guesses.
 \end{theorem}
 \noindent So ``reasoning never adds information'' holds for a \emph{fixed} set of
 reachable channels. Discovering an endpoint, credential or exploit is
 computation that raises the budget. A \emph{sandbox} is a guarantee that every
 feasible computation stays within allowed channels; an escape violates it. In
-recently reported incidents, models under evaluation left their test sandbox
-and retrieved benchmark answers from an outside server~\cite{openai2026}: the
-answers were not inside, so the only route was an unallowed channel.
+a reported incident, models under evaluation bypassed their sandbox's network
+isolation and compromised an external provider's systems, apparently seeking
+task solutions~\cite{openai2026}: an unallowed channel was the only route.
 
 \ifnum\PaperShort=0
 \noindent\textbf{Worst case.} For $M\ge3$ possible truths with no prior, starting
@@ -469,7 +473,7 @@ the user wants.
 
 \noindent\textbf{A changing world.} If $\Theta_t$ drifts as a Markov chain with
 strong data-processing constant $\eta<1$~\cite{ahlswede1976}, tools observe the
-current state, and $C_t\le C$, then $\I(\Theta_t;D_t)\le\eta^t\I(\Theta_0;D_0)+\eta C/(1-\eta)$:
+state before each drift step, and $C_t\le C$, then $\I(\Theta_t;D_t)\le\eta^t\I(\Theta_0;D_0)+\eta C/(1-\eta)$:
 knowledge saturates however long agents run.
 
 \noindent\textbf{Adversaries and provenance.} If every post is stored with its
@@ -494,8 +498,8 @@ headroom is exhausted.
 $\Hh(\Theta)$ minus the held-out log-loss of a team's calibrated predictions
 estimates a lower bound on $\I_\V$, with PAC guarantees under computational
 constraints~\cite{xu2020}. Tool capacity is bounded by the answer space, and for
-noisy tools by measured error rates (a test that flakes with probability $p$ has
-$C\le1-h(p)$). Available information about the world, $\I(W;M)$ for a pretrained
+noisy tools by measured error rates (a test that reports the wrong outcome with
+probability $p$, either way, has $C\le1-h(p)$). Available information about the world, $\I(W;M)$ for a pretrained
 model, is well defined but hard to estimate; the bounds' value is then
 structural rather than numerical.
 \else
@@ -518,9 +522,9 @@ direction~\cite{tran2026,smit2024,choi2025} are consistent with this. Second,
 some findings look like tensions. Debate is reported to improve
 \emph{factuality}~\cite{du2024}; but within the actual world a factual answer is
 determined by the question, so this is reasoning over stored knowledge, not new
-information. Debate is proved not to help Bayesian agents~\cite{choi2025}; such
-agents have no reasoning gap, so Theorem~\ref{thm:reasoning} predicts exactly
-that. Finally, diverse agents outperform identical ones~\cite{yang2026}: models
+information. Debate is shown not to raise the expected correctness of Bayesian beliefs under
+martingale conditions~\cite{choi2025}; such agents have no reasoning gap, so
+Theorem~\ref{thm:reasoning} predicts exactly that. Finally, diverse agents outperform identical ones~\cite{yang2026}: models
 trained on different data carry different information (a larger $D_0$) and
 compute different things (a larger $\V$), whereas identical agents add only
 compute.
@@ -540,17 +544,17 @@ Prediction (result in this paper) & Published finding & Verdict \\
 Extra thinking does not help information-bound tasks (Thm.~\ref{thm:coffee}, no tools)
  & More test-time compute does not reliably raise closed-book accuracy across 14 reasoning models and often increases hallucination~\cite{zhao2026}; self-correction without external feedback often fails~\cite{huang2024}. & Supported \\
 Tools raise information-bound accuracy (Thm.~\ref{thm:coffee})
- & Retrieval and tool use are the standard remedy for knowledge-intensive tasks~\cite{lewis2020,yao2023,schick2023}. & Supported \\
+ & Retrieval and tool use are common remedies for knowledge-intensive tasks~\cite{lewis2020,yao2023,schick2023}. & Supported \\
 A model knows only what its training carried (Sec.~\ref{sec:model})
- & QA accuracy tracks the number of relevant pretraining documents, causally; retrieval reduces the dependence~\cite{kandpal2023}. & Supported \\
+ & QA accuracy tracks the number of relevant pretraining documents (counterfactual retraining suggests the link is causal); retrieval reduces but does not remove the dependence~\cite{kandpal2023}. & Supported \\
 Debate helps compute-bound tasks (Thm.~\ref{thm:reasoning})
  & Debate improves mathematical and strategic reasoning~\cite{du2024}. & Supported \\
 Debate is worth its compute, no more (Cor.~\ref{cor:debate})
- & Debate does not reliably beat self-consistency~\cite{smit2024}; most gains come from voting~\cite{choi2025}; single agents match multi-agent systems at equal thinking tokens~\cite{tran2026}. & Consistent \\
+ & Under default settings debate does not reliably beat self-consistency~\cite{smit2024}; most gains come from voting~\cite{choi2025}; single agents match multi-agent systems at equal thinking tokens~\cite{tran2026}. & Consistent \\
 More identical agents saturate (Thm.~\ref{thm:compute}, Cor.~\ref{cor:agents})
- & Homogeneous agents show strong diminishing returns; two diverse agents can match sixteen identical ones~\cite{yang2026}; voting gains grow with task difficulty~\cite{li2024agents}. & Supported \\
+ & Homogeneous agents show strong diminishing returns; two diverse agents can match sixteen identical ones~\cite{yang2026}; voting gains are larger on harder tasks (more reasoning steps), tapering at the highest inherent difficulty~\cite{li2024agents}. & Supported \\
 Redundant tool calls add little (Thm.~\ref{thm:coffee}, exact accounting)
- & Accuracy plateaus after about eight calls and redundant calls can hurt~\cite{du2025infomosaic}. & Supported \\
+ & In the authors' analysis (one model, three domains), accuracy plateaus after about eight calls and further calls sometimes reduce it~\cite{du2025infomosaic}. & Supported \\
 Split information must be communicated (Thm.~\ref{thm:comm})
  & Agent groups reach 30.1\% with distributed information versus 80.7\% for one agent with all of it; agents do not seek what others hold~\cite{li2026hidden}. & Supported \\
 Zero-information messages flip correct agents (Sec.~\ref{sec:reasoning})
@@ -558,9 +562,9 @@ Zero-information messages flip correct agents (Sec.~\ref{sec:reasoning})
 Without provenance, adversaries erase information (Sec.~\ref{sec:ext})
  & Stealthy tampering of inter-agent messages succeeds across tasks and architectures~\cite{yan2026mast}. & Supported \\
 In a changing world knowledge decays and tools refresh it only partly (Sec.~\ref{sec:ext})
- & Under continuous knowledge drift, retrieval and learning methods struggle~\cite{liu2026drift}. & Supported \\
+ & Under continuous knowledge drift, most retrieval and learning methods struggle~\cite{liu2026drift}. & Supported \\
 Open-ended work is bounded by information about intent (Sec.~\ref{sec:ext})
- & Underspecification consistently hurts agents; an ask-user tool recovers part of the loss~\cite{pu2026lhaw}. & Supported \\
+ & Underspecification lowers agent performance across benchmarks; an ask-user tool recovers part of the loss, unevenly across models and benchmarks~\cite{pu2026lhaw}. & Supported \\
 RL post-training raises usable, not available, information (Thm.~\ref{thm:reasoning})
  & RL with verifiable rewards beats the base model at small pass@$k$, but the base model wins at large $k$; the solvable set does not grow and often narrows~\cite{yue2025}. & Supported \\
 Error vs.\ informative tool calls stays above the Fano floor (Cor.~\ref{cor:rounds})
@@ -630,19 +634,44 @@ Section~\ref{sec:ext}.
 
 \section{Related Work}
 
-Closed-system debate is bounded via the DPI in~\cite{shin2026} and modeled as a
-belief martingale in~\cite{choi2025}. Yang~et~al.~\cite{yang2026} bound
-multi-agent performance by task uncertainty and a sum of per-agent channel
-informations, the same ``$\min\{\Hh,\sum\text{channels}\}$'' shape with agents as
-the channels. Fano-type bounds have been applied to queries in adversarial
+\ifnum\PaperShort=0
+For debate among copies of one model, Shin~\cite{shin2026} uses the DPI to show
+that the expected mutual information between the supplied evidence and the
+debate outputs cannot increase across rounds (a faithfulness bound, not an
+accuracy bound), and Choi~et~al.~\cite{choi2025} model debate as a belief
+martingale under conditions on the agents. Yang~et~al.~\cite{yang2026} bound
+the usable evidence of a multi-agent transcript by task uncertainty and a sum of
+per-configuration single-call informations, the same
+``$\min\{\Hh,\sum\text{channels}\}$'' shape with agents as the channels.
+\else
+Shin~\cite{shin2026} bounds evidence faithfulness in debate among copies of
+one model via the DPI, and Choi~et~al.~\cite{choi2025} model debate as a belief
+martingale. Yang~et~al.~\cite{yang2026} bound usable evidence by task
+uncertainty and per-configuration informations, the same
+``$\min\{\Hh,\sum\text{channels}\}$'' shape.
+\fi
+\ifnum\PaperShort=0
+Ao~et~al.~\cite{ao2026} show that, without new external signals, a delegated
+agent network cannot beat a centralized Bayesian decision maker with the same
+information, and Zhang~et~al.~\cite{zhang2026blackwell} that voting and debate
+cannot be more informative than the agents' pooled private information; both
+state the qualitative principle, not a per-call budget. Lutati~\cite{lutati2025}
+treats problem solving as acquiring a fixed number of bits at a fixed rate per
+action. Rizvi-Martel~et~al.~\cite{rizvi2026} bound agent count and communication
+for transformer-based multi-agent reasoning; our communication ceiling instead
+concerns arbitrary, computationally unbounded agents with split evidence.
+\fi Fano-type bounds have been applied to queries in adversarial
 attacks~\cite{kaneko2025} and to single-pass multi-hop reasoning~\cite{wan2026fano}.
-Usable information is due to~\cite{xu2020}; synergy is studied in partial
+Usable information is due to~\cite{xu2020}, with a related account of information
+for computationally bounded observers in~\cite{finzi2026}; synergy is studied in partial
 information decomposition~\cite{williams2010}; feedback and directed information
 in~\cite{massey1990}; and Fano-based active-learning bounds
-in~\cite{raginsky2011}. These works each address one ceiling. To our knowledge, the
-per-call capacity budget for adaptive multi-agent tool use, its combination with
-usable information and communication into one decomposition, and the channel
-account of sandboxing have not been stated before.
+in~\cite{raginsky2011}. These works each address one ceiling. Accumulating information over adaptive queries with the chain rule and Fano's
+inequality is a standard technique; to our knowledge, its form here (a per-call
+capacity budget in which agents and protocol drop out, for adaptive multi-agent
+tool use), its combination with usable information and communication into one
+decomposition, and the channel account of sandboxing in the LLM-agent setting
+have not been stated before.
 
 \section{Limitations}
 
@@ -653,7 +682,8 @@ incentives (reward hacking, goal adoption), which the bounds do not address.
 Bounds for agents that learn across episodes, whose starting data changes over
 time, are not given. Equality in Theorem~\ref{thm:coffee} is characterized, but no
 general algorithm achieves it. The proofs are mathematical and checked
-numerically on finite examples, not machine-verified. We report no new
+numerically on finite examples; only the baseline invariant behind
+Theorem~\ref{thm:coffee} is machine-verified, in Lean. We report no new
 experiments; Table~\ref{tab:evidence} relies on published findings, summarized
 from their abstracts, and several predictions in Section~\ref{sec:predict} are
 untested.
@@ -662,7 +692,8 @@ untested.
 
 Collective intelligence is not one quantity, and it does not have one limit. A
 team of agents cannot know more than it has observed, use more than it holds, or
-combine what its members hold without exchanging enough; each of these is bounded
+combine what its members hold without exchanging enough, for tasks of high
+communication complexity; each of these is bounded
 by a different theory, and each is moved by a different intervention. The
 question to ask of a struggling collective is therefore not how to make it more
 intelligent, but \emph{which resource limits it, and what can remove that limit}:
