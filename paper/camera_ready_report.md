@@ -7,10 +7,10 @@ Checker: `check_paper.py`; numbers registry: `numbers.json`.
 
 | Version | File | Pages (body / total) | Limit used | Blocking issues |
 |---|---|---|---|---|
-| Full (AGENT 2027 full track, named) | `coffee_law.pdf` | 6 / 7 | 8 excl. references | 1: affiliation and email placeholders (author decision) |
-| Short (AGENT 2027 short track, named) | `coffee_law_short.pdf` | 5 / 6 | 5 excl. references | 1: affiliation and email placeholders (author decision) |
+| Full (AGENT 2027 full track, named) | `coffee_law.pdf` | 6 / 7 | 8 excl. references | 0 (affiliation set) |
+| Short (AGENT 2027 short track, named) | `coffee_law_short.pdf` | 5 / 6 | 5 excl. references | 0 (affiliation set) |
 | Anonymous short (double-blind, e.g. ISIT) | `coffee_law_anon.pdf` | 5 / 6, page 6 references only | 5 + references-only page | **0** |
-| Camera-ready (full, copyright notice) | `coffee_law_final.pdf` | 6 / 7 | 8 excl. references | 1: affiliation and email placeholders (author decision) |
+| Camera-ready (full, copyright notice) | `coffee_law_final.pdf` | 6 / 7 | 8 excl. references | 0 (affiliation set) |
 
 - All fonts embedded and subsetted, Type 1 only (IEEE PDF eXpress requirement).
 - US letter, no overfull boxes, no undefined references or citations.
@@ -124,7 +124,7 @@ resource limits this collective, and what intervention removes that limit?"
   shows November 27.
 
 ## Author decisions
-1. Affiliation and email (the only blocking item for the named versions).
+1. Affiliation: done (Security Researcher, OWASP; Shrewd Research). No email is listed.
 2. Name: this repository previously hosted a different "Coffee Law"; decide
    whether to distinguish them in the paper or rename.
 3. Venue and track: AGENT 2027 full track (`coffee_law.pdf`) or short track

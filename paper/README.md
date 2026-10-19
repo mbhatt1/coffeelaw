@@ -64,7 +64,6 @@ venues' pages and deadline trackers as of October 2026.
 
 ## Before submitting
 
-- Fill in the affiliation and email in the author block.
 - Decide on the name: this repository previously hosted a different "Coffee
   Law" (context-quality power laws). If that work circulated, consider a
   sentence distinguishing them, or a new name.
