@@ -1,0 +1,16 @@
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+data/
+reports/
+release/
+blind/
+.ipynb_checkpoints/
+.DS_Store
+.env*
+Dockerfile*
+.dockerignore
+*.log

@@ -1,0 +1,41 @@
+{
+  "study": "Ceiling-discrimination experiment suite (Coffee Law, Bhatt 2026)",
+  "spec": "specs/001-ceiling-discrimination-experiments/spec.md",
+  "predictions": {
+    "H1": {"statement": "On information-bound tasks, E helps; K, M, A1, P1 and P2 do not", "paper_source": "Thm 1, Cor 1",
+           "falsified_if": "K gives a significant gain on leakage-free information-bound instances",
+           "test": "superiority(E) + TOST(K,M,A1,P1,P2)", "family": "info", "matching_arm": "E", "margin": 0.05},
+    "H2": {"statement": "On reasoning-bound tasks, K helps; E (restating held evidence), M and A1 do not", "paper_source": "Thm 2, Cor 3",
+           "falsified_if": "Restated evidence gives a gain as large as K at matched delta, not explained by easier presentation (checked with P1)",
+           "test": "superiority(K) + TOST(E,M,A1,P1,P2)", "family": "reason", "matching_arm": "K", "margin": 0.05},
+    "H3": {"statement": "On communication-bound tasks, M helps; K and same-kind private E do not", "paper_source": "Thm 5",
+           "falsified_if": "K alone lifts inner-product-like accuracy significantly above chance at fixed message budget",
+           "test": "superiority(M) + TOST(K,E,A1,P1,P2)", "family": ["comm_parity", "comm_ip"], "matching_arm": "M", "margin": 0.05},
+    "H4": {"statement": "A1 gives no gain on any family", "paper_source": "Cor 1, Thm 3",
+           "falsified_if": "A significant A1 gain on any family", "test": "TOST(A1) per family", "margin": 0.05},
+    "H5": {"statement": "The A2 gain equals the gain from the same delta compute given to one agent", "paper_source": "Thm 3",
+           "falsified_if": "Multi-agent A2 significantly beats single-agent + delta compute",
+           "test": "TOST(A2 - A2_single_ref) per family", "margin": 0.05},
+    "H6": {"statement": "Information-bound error never falls below the Fano floor", "paper_source": "Cor 2",
+           "falsified_if": "Error significantly below the floor (audited for leakage first)", "test": "floor_check", "margin": null},
+    "H7": {"statement": "Inner-product-like splits stay near chance until about n/2 bits; parity-like splits jump at 1 bit", "paper_source": "Thm 5, Sec IX.5",
+           "falsified_if": "Inner-product-like accuracy rises steadily from the first bits", "test": "changepoint_vs_linear", "margin": null},
+    "H8": {"statement": "Mixed tasks show a positive interaction between the two matching interventions", "paper_source": "decomposition",
+           "falsified_if": "No interaction", "test": "interaction", "margin": null},
+    "H9": {"statement": "The blind diagnostic names the binding ceiling well above chance on held-out constructed tasks", "paper_source": "Sec IX.1",
+           "falsified_if": "Accuracy not significantly above 1/3", "test": "classification_accuracy", "margin": null}
+  },
+  "families": {
+    "info": {"k": null, "p": null},
+    "reason": {"d": null, "m": 4},
+    "comm_parity": {"n": null},
+    "comm_ip": {"n": null}
+  },
+  "arms": ["baseline", "E", "K", "M", "A1", "A2", "A2_single_ref", "P1", "P2"],
+  "delta_levels": {"small": null, "medium": null, "large": null},
+  "models": {"A": "claude-opus-5-5", "B": null, "C": null},
+  "sample_sizes": {"per_cell": null, "power_target": 0.8, "equivalence_margin": 0.05},
+  "exclusion_rules": ["info-family instance solved at baseline beyond chance (leakage)", "malformed instance (schema validation failure)"],
+  "analysis": {"bootstrap_resamples": 10000, "multiple_comparisons": "holm", "alpha": 0.05,
+               "verdict_rule": "a prediction is supported/contradicted only if the per-model verdict agrees in at least 2 of 3 model families"}
+}

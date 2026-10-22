@@ -1,0 +1,16 @@
+data/
+reports/
+blind/key*
+release/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+.ipynb_checkpoints/
+.DS_Store
+.env*
+nb_data/
+.pytest_cache/
+.ruff_cache/
