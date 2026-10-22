@@ -440,3 +440,16 @@ Done: 50 of 68 tasks. All 68 tests pass in Docker on Python 3.12 and 3.10.
 
 - Blocked on researcher decisions: T038 and T039 (families B and C), T045 and T052 (pre-registration fill and freeze after a real pilot).
 - Not started: US3 (T053–T058), US4 (T059–T063), and T064, T065, T068.
+
+## Implementation notes, part 2 (test runs with a real local model)
+
+**Added:**
+- Adapters for Ollama (`ollama/<m>`) and any OpenAI-style server (`openai/<m>`). For models without native effort, depth is a reasoning stage.
+- A difficulty search per model (`ceilings calibrate`), and `ceilings check` for integrity, quality and expectations.
+- `show` / `numbers` for the paper's number registry, and `--concurrency`.
+- Full prompts and raw replies in every transcript.
+- `scripts/watchdog.py` (resource caps and thermal kill), plus the throttled `scripts/local_smoke.sh` and `scripts/local_confirm.sh`.
+
+**Test runs:** three throttled runs with `ollama/gemma3:1b`, each reviewed by independent subagents. The reviews led to fixes in the answer schema, the message protocol, the reasoning stage, the information gate and prompt, option-order bias, independence of the comm instances, sweep checkability, and the statistics and verdict rules (exact McNemar and Newcombe TOST; pre-registered falsifiers only; a **not evaluable** verdict; at least 2 models must agree). See `TESTING.md`. Tests: 114, all passing on Python 3.12 and 3.10.
+
+**Still open:** T038/T039 (choose model families B and C), T045/T052 (fill in and freeze the pre-registration after a real pilot), US3/US4, and T064/T065/T068.

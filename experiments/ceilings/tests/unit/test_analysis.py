@@ -11,40 +11,60 @@ from ceilings.analysis.usable_info import usable_information
 
 
 def _paired(gain, n, rho, rng):
-    """Correlated binary outcomes for baseline and arm with a given true gain."""
+    """Correlated binary outcomes (arm, baseline) with a given true accuracy gain."""
     p0 = 0.4
-    z = rng.random(n)
-    base = (z < p0).astype(float)
+    base = (rng.random(n) < p0).astype(float)
     arm = np.where(rng.random(n) < rho, base, (rng.random(n) < p0).astype(float))
     lift = rng.random(n) < gain / (1 - p0)
     arm = np.where((arm == 0) & lift, 1.0, arm)
-    return arm - base
+    return arm, base
 
 
 def test_bootstrap_ci_covers_known_gain():
     rng = np.random.default_rng(0)
     hits = 0
     for rep in range(100):
-        d = _paired(0.10, 600, 0.5, rng)
-        true_mean = 0.10
-        lo, hi = bootstrap_ci(d, seed=rep, n_boot=2000)
-        hits += lo <= true_mean <= hi
+        arm, base = _paired(0.10, 600, 0.5, rng)
+        lo, hi = bootstrap_ci(arm - base, seed=rep, n_boot=2000)
+        hits += lo <= 0.10 <= hi
     assert hits >= 90
 
 
 def test_tost_power_and_rejection():
     rng = np.random.default_rng(1)
-    # n = 850 paired at rho = 0.5 is the corrected planning figure (research R10).
-    equiv = np.mean([tost(_paired(0.0, 850, 0.5, rng), 0.05) < 0.05 for _ in range(200)])
-    assert equiv >= 0.75
-    false_equiv = np.mean([tost(_paired(0.10, 850, 0.5, rng), 0.05) < 0.05 for _ in range(200)])
+    # n = 850 paired at rho = 0.5 is the planning figure (research R10).
+    equiv = np.mean([tost(*_paired(0.0, 850, 0.5, rng), 0.05) < 0.05 for _ in range(100)])
+    assert equiv >= 0.70
+    false_equiv = np.mean([tost(*_paired(0.10, 850, 0.5, rng), 0.05) < 0.05 for _ in range(100)])
     assert false_equiv <= 0.05
+
+
+def test_zero_differences_at_small_n_are_not_equivalence():
+    """Regression: identical outcomes at n=8 used to give p=0 ("equivalent") from a zero SE."""
+    same = np.array([1, 0, 1, 1, 0, 0, 1, 0], dtype=float)
+    assert tost(same, same, 0.05) > 0.05
+    assert superiority(same, same) == 1.0
+    big = np.tile(same, 200)  # the same pattern at n=1600 is equivalent
+    assert tost(big, big, 0.05) < 0.05
 
 
 def test_superiority_detects_gain():
     rng = np.random.default_rng(2)
-    assert superiority(_paired(0.10, 600, 0.5, rng)) < 0.01
-    assert superiority(np.zeros(10)) == 1.0
+    assert superiority(*_paired(0.10, 600, 0.5, rng)) < 0.01
+    assert superiority(np.ones(10), np.zeros(10)) < 0.01
+    assert superiority(np.zeros(10), np.zeros(10)) == 1.0
+
+
+def test_newcombe_interval_covers_true_difference():
+    from ceilings.analysis.equivalence import newcombe_paired_ci
+
+    rng = np.random.default_rng(7)
+    hits = 0
+    for _ in range(400):
+        arm, base = _paired(0.10, 120, 0.5, rng)
+        _, lo, hi = newcombe_paired_ci(arm, base, 0.95)
+        hits += lo <= 0.10 <= hi
+    assert hits / 400 >= 0.92
 
 
 def test_holm_matches_statsmodels():

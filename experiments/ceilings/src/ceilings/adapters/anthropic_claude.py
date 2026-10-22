@@ -19,6 +19,7 @@ from ceilings.adapters.base import (
     Usage,
     answer_schema,
     normalize_probabilities,
+    probability_diagnostics,
 )
 
 MODEL_ID = "claude-opus-5-5"
@@ -43,12 +44,12 @@ class ClaudeAdapter(ModelAdapter):
             input_tokens * PRICE_PER_MTOK["input"] + output_tokens * PRICE_PER_MTOK["output"]
         ) / 1e6
 
-    def _params(self, messages, depth, answer_space, max_tokens) -> dict:
+    def _params(self, messages, depth, answer_space, max_tokens, seed=None) -> dict:
         system = [m["content"] for m in messages if m["role"] == "system"]
         convo = [m for m in messages if m["role"] != "system"]
         output_config: dict = {"effort": depth}
         if answer_space is not None:
-            output_config["format"] = {"type": "json_schema", "schema": answer_schema(answer_space)}
+            output_config["format"] = {"type": "json_schema", "schema": answer_schema(answer_space, seed)}
         params = {
             "model": self.model_id,
             "max_tokens": max_tokens,
@@ -77,18 +78,24 @@ class ClaudeAdapter(ModelAdapter):
             probs = normalize_probabilities(None, answer_space) if answer_space else {}
             return AdapterResult(None, probs, refusal, usage, request_id, valid=valid)
         text = "".join(b.text for b in response.content if b.type == "text")
+        extra = {"raw": text, "stop": response.stop_reason}
         if answer_space is None:
-            return AdapterResult(None, {}, None, usage, request_id, text=text, valid=valid)
+            return AdapterResult(None, {}, None, usage, request_id, text=text, valid=valid,
+                                 extra=extra)
         try:
             data = json.loads(text)
             answer = data["answer"] if data["answer"] in answer_space else None
             probs = normalize_probabilities(data.get("probabilities"), answer_space)
+            extra["parse"] = "json" if answer else "failed"
+            extra.update(probability_diagnostics(text, answer, probs, answer_space))
         except (json.JSONDecodeError, KeyError, TypeError):
             answer, probs = None, normalize_probabilities(None, answer_space)
-        return AdapterResult(answer, probs, None, usage, request_id, text=text, valid=valid)
+            extra["parse"] = "failed"
+        return AdapterResult(answer, probs, None, usage, request_id, text=text, valid=valid,
+                             extra=extra)
 
     def complete(self, messages, depth, answer_space, seed, max_tokens=16000):
-        params = self._params(messages, depth, answer_space, max_tokens)
+        params = self._params(messages, depth, answer_space, max_tokens, seed)
         if max_tokens > 16000:
             with self.client.messages.stream(**params) as stream:
                 response = stream.get_final_message()

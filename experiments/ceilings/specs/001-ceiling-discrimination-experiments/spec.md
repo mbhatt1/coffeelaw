@@ -158,7 +158,7 @@ An analyst who is not told the task family runs the three-intervention diagnosti
 - **FR-017**: Sample sizes MUST come from a pre-registered power analysis that can confirm a ±5-percentage-point equivalence margin with at least 80% power. The planning figure is about 850 paired instances per family per arm (corrected from ~600 during implementation; see research R10).
 - **FR-018**: The blind diagnostic in Story 4 MUST be performed by an analyst who has no access to family labels. Naturalistic-task labels MUST be fixed by at least two independent annotators before any results are produced, and inter-annotator agreement MUST be reported.
 - **FR-019**: All task generators, instances, prompts, run records and analysis outputs MUST be released, so that a third party can reproduce every table and figure.
-- **FR-020**: Every outcome MUST be reported against the pre-registered prediction as **supported**, **contradicted**, or **inconclusive** (confidence interval too wide), including predictions that fail.
+- **FR-020**: Every outcome MUST be reported against the pre-registered prediction as **supported**, **contradicted**, **inconclusive** (confidence interval too wide), or **not evaluable** (a model's calibration gate failed, fewer instances than the pre-registered sample size, or a required arm missing; the reason is reported), including predictions that fail. A prediction is contradicted only by its own pre-registered falsification condition.
 
 ### Pre-registered Predictions and Falsification Conditions
 

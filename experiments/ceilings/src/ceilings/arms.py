@@ -32,6 +32,7 @@ class ArmConfig:
     samples: int = 4
     answerers: tuple[str, ...] = ("A",)
     tool_rounds: int = 0
+    probe_policy: str = "rotation"  # "rotation": attribute t mod k; "agent": the model chooses
     message_mode: str = "tokens"
     message_budget: int = 0
     relay: bool = False
@@ -114,13 +115,19 @@ def candidates(arm_id: str, family: str, n_bits: int | None = None) -> list[obje
     return [None]
 
 
-def full_strength(family: str, n_bits: int | None = None) -> tuple[str, object]:
-    """The family's own intervention at full strength (calibration gate, FR-007)."""
+def full_strength(family: str, difficulty: dict) -> tuple[str, object]:
+    """The family's own intervention at full strength (calibration gate, FR-007).
+
+    info: every attribute probed once when the probe is exact, five times when noisy (a
+    Bayes-optimal reader then reaches about 97% at p=0.1, k=3, clear of the 90% gate);
+    reason: depth `xhigh`; comm: the whole private list may be sent.
+    """
     if family == "info":
-        return "E", 16
+        k, p = int(difficulty["k"]), float(difficulty["p"])
+        return "E", k if p == 0 else 5 * k
     if family == "reason":
-        return "K", "max"
-    return "M", n_bits
+        return "K", "xhigh"
+    return "M", int(difficulty["n"])
 
 
 def extra_text(kind: str | None, amount: int, filler_tokens: int, evidence: str) -> str:

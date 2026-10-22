@@ -16,11 +16,18 @@ def test_bits_mode_accepts_valid_message():
     assert ch.ledger.message_bits == 4 and ch.ledger.message_count == 1
 
 
-@pytest.mark.parametrize("bad", ["01012", "01010", "yes"])
+@pytest.mark.parametrize("bad", ["01012", "yes", "0 1"])
 def test_bits_mode_rejects_then_delivers_empty(bad):
     ch = _channel("bits", 4)
     d = ch.send("B", "A", lambda retry: bad)
     assert d.text == "" and d.retried and d.bits == 0
+
+
+def test_bits_mode_cuts_long_bit_strings_to_the_budget():
+    ch = _channel("bits", 2)
+    d = ch.send("B", "A", lambda retry: "01011")
+    assert d.text == "01" and d.bits == 2 and d.truncated and not d.retried
+    assert ch.ledger.message_bits == 2
 
 
 def test_bits_mode_retry_can_fix_message():

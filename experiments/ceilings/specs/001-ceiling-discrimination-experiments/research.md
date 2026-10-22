@@ -99,6 +99,10 @@ Each entry records a decision, why it was made, and what else was considered. To
   - Paired cluster bootstrap over instances (10,000 resamples) for confidence intervals on gains.
   - Two one-sided tests (TOST) at ±5 percentage points for every "no effect" prediction.
   - Holm correction across the prediction set H1–H9.
+  - **Revision after the local test runs (see `TESTING.md`):**
+    - Binary paired outcomes use exact or score methods. Superiority uses a one-sided exact McNemar test. TOST inverts the Newcombe (1998, method 10) paired-difference interval. The earlier t-based TOST returned p = 0 whenever all differences were identical.
+    - There are two Holm families per model: support tests and falsification tests. Each comparison is counted once.
+    - A verdict is "not evaluable" when the gate failed, n is below the pre-registered size, or an arm is missing.
   - Interaction term for Story 3 from a logistic mixed model, with instance as a random effect.
   - For H7, a change-point model fit against a linear model, compared by held-out log-likelihood.
   - The power analysis uses pilot variances. The planning figure: about 850 paired instances at a within-instance correlation of 0.5 (outcome SD 0.5, ±5-point margin, α = 0.05, 80% power).

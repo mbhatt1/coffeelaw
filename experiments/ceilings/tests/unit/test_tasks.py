@@ -8,17 +8,32 @@ from ceilings import tasks, theory
 from ceilings.tasks import comm, info, reason
 
 
-def test_info_deterministic_and_answer_never_in_evidence():
+def test_info_deterministic_and_answer_never_singled_out():
     for seed in range(200):
         a, b = info.generate(seed, k=3, p=0.1), info.generate(seed, k=3, p=0.1)
         assert a == b and a.instance_id == b.instance_id
-        text = a.scenario + a.shared_evidence + "".join(a.private_evidence.values())
-        hidden = a.payload["hidden"]["value"]
-        # every host name appears in the scenario range only as the two endpoints
-        assert text.count(a.answer) <= (
-            1 if a.answer in (info.host_name(0), info.host_name(7)) else 0
-        )
-        assert f"{hidden:03b}" not in text
+        text = a.scenario + "\n" + a.shared_evidence + "".join(a.private_evidence.values())
+        counts = {h: len(re.findall(rf"(?<![\w-]){h}(?![\w-])", text)) for h in a.answer_space}
+        # every host is listed once in the table; the endpoints also appear in the scenario
+        assert counts[a.answer] <= max(c for h, c in counts.items() if h != a.answer)
+        assert "hidden" not in text.lower()
+
+
+def test_info_host_table_identifies_every_host():
+    inst = info.generate(4, k=4, p=0.0)
+    rows = [ln.split(": ", 1)[1] for ln in inst.shared_evidence.splitlines()
+            if ln.startswith("host-")]
+    assert len(rows) == 16 and len(set(rows)) == 16
+    attrs = inst.payload["public"]["attributes"]
+    hidden = inst.payload["hidden"]["value"]
+    # the attribute values the probe reports single out the failing host in the table
+    reported = [info.probe_text(attrs, q, str((hidden >> q) & 1)) for q in range(4)]
+    values = [r.rsplit(" is ", 1)[1].rstrip(".") for r in reported]
+    matches = [ln for ln in inst.shared_evidence.splitlines() if ln.startswith("host-")
+               and all(f"{a[0]} {v}" in ln for a, v in zip(attrs, values, strict=True))]
+    assert matches == [f"{inst.answer}: " + ", ".join(f"{a[0]} {v}" for a, v in
+                                                      zip(attrs, values, strict=True))]
+    assert "invalid" in info.probe_text(attrs, "colour", "ERR")
 
 
 def test_info_theory_quantities():
@@ -73,7 +88,11 @@ def test_comm_split_evidence(variant, n):
     x = inst.payload["private"]["A"]["bits"]
     y = inst.payload["private"]["B"]["bits"]
     parsed_x = [1 if ln.endswith("yes") else 0 for ln in inst.private_evidence["A"].splitlines()]
-    parsed_y = [1 if ln.endswith("yes") else 0 for ln in inst.private_evidence["B"].splitlines()]
+    parsed_y = [1 if ln.endswith("yes") else 0 for ln in inst.private_evidence["B"].splitlines()
+                if ln.startswith("Role requires")]
+    ready = inst.private_evidence["B"].splitlines()[-1].rsplit(": ", 1)[1]
+    assert ready == (str(sum(inst.payload["private"]["B"]["bits"]) % 2) if variant == "parity"
+                     else "".join(map(str, inst.payload["private"]["B"]["bits"])))
     assert parsed_x == x and parsed_y == y  # natural-language wrapper round-trips
     f = theory.inner_product if variant == "ip" else theory.parity
     assert inst.answer == ("odd" if f(x, y) else "even")
@@ -82,5 +101,6 @@ def test_comm_split_evidence(variant, n):
 def test_registry_and_storage(tmp_path):
     insts = tasks.generate_many("comm_ip", 5, "calibration", n=8)
     tasks.save_instances(insts, tmp_path)
-    assert tasks.load_instances(tmp_path, "comm_ip", "1", "calibration") == insts
+    assert tasks.load_instances(tmp_path, "comm_ip", comm.VERSION, "calibration", {"n": 8}) == insts
+    assert tasks.instance_path(tmp_path, "comm_ip", comm.VERSION, "main", {"n": 8, "variant": "ip"}).parent.name == "n8"
     assert {i.split for i in insts} == {"calibration"}

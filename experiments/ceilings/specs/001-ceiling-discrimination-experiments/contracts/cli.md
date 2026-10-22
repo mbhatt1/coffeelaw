@@ -16,3 +16,17 @@ Every command is idempotent and resumable. Every command except `generate` and `
 | `ceilings unmask` | Reveal truth labels after every DiagnosticCall is locked | `--calls blind/calls.json` | `reports/diagnostic.json` |
 | `ceilings audit` | Integrity checks: hashes, ledger totals, bit-mode compliance, Δ matching, refusals | | `reports/audit.json`; exit 2 on any failure |
 | `ceilings report` | Assemble the final report against the pre-registration, listing deviations | | `reports/final.md` |
+
+## Added during implementation
+
+| Command | Purpose | Key options | Output |
+|---|---|---|---|
+| `ceilings calibrate` | Per-model difficulty search: try each family's difficulty grid until the gate passes | `--model`, `--n`, `--grid full\|quick`, `--concurrency` | `<root>/difficulty/<family>__<model>.json` (`chosen` is null if nothing passes) |
+| `ceilings prepare` | Generate instances at the searched (or given) difficulty, run the gate, match costs | `--no-match` (smoke tests only; cells marked unmatched), `--delta`, `--n-match` | instances, `calibration/`, `arms/` |
+| `ceilings check` | Did the runs go as designed? Integrity (FAIL), quality rates (WARN), expectations | `--model` | `reports/checks.json`; exit 2 on any integrity failure |
+| `ceilings show` | Print gain rows in a fixed format, for the paper's number registry | `--model --family --arm --delta` | stdout |
+| `ceilings numbers` | Write `paper/numbers.json` entries whose command is `ceilings show ...` | as `show`, `--out` | JSON entries |
+
+`ceilings analyze` also takes `--min-n` (default: `prereg/config.json` `sample_sizes.per_cell`) and
+`--min-models` (default 2). It reports **not evaluable** when a gate failed, n is too small, or an
+arm is missing. Every model-calling command takes `--concurrency`.

@@ -42,16 +42,25 @@ class Channel:
         return bool(self._pattern and self._pattern.match(text))
 
     def send(self, sender: str, receiver: str, compose: Callable[[str | None], str]) -> Delivery:
-        """Deliver `compose(None)`; in bit mode a malformed message gets one retry, then ''.
+        """Deliver `compose(None)`.
+
+        Bit mode: a string of 0s and 1s longer than the budget is cut to its first L bits (only L
+        bits cross the channel); anything else malformed gets one retry, then '' is delivered.
 
         `compose` receives the rejection reason on retry so an agent can correct itself.
         """
         text = compose(None)
         retried = False
+        truncated = False
         if self.mode == "bits":
+            if re.fullmatch(r"[01]+", text or "") and len(text) > self.budget:
+                text, truncated = text[: self.budget], True  # only the first L bits cross
             if not self.valid_bits(text):
                 retried = True
-                text = compose(f"Rejected: reply with only 0s and 1s, at most {self.budget}.")
+                text = compose(f"Rejected: that reply did not follow the message format. Use at most "
+                               f"{self.budget} characters, each 1 or 0, and no other text.")
+                if re.fullmatch(r"[01]+", text or "") and len(text) > self.budget:
+                    text, truncated = text[: self.budget], True
                 if not self.valid_bits(text):
                     text = ""
             delivery = Delivery(
@@ -60,6 +69,7 @@ class Channel:
                 text,
                 self.count_tokens(text) if text else 0,
                 bits=len(text),
+                truncated=truncated,
                 retried=retried,
             )
             self.ledger.add_message(delivery.tokens, bits=len(text))

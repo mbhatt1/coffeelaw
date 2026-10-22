@@ -1,13 +1,16 @@
-"""Grid execution with content-hash run IDs, resume, transcripts and a spending cap."""
+"""Grid execution with content-hash run IDs, resume, transcripts, concurrency and a spending cap."""
 
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+import threading
+from collections.abc import Callable, Iterable
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 
 from ceilings import prereg
+from ceilings.adapters import safe_model_dir
 from ceilings.agents import Policy
 from ceilings.arms import ArmConfig
 from ceilings.orchestrator import run_team
@@ -39,7 +42,7 @@ def run_id_for(
 
 
 def runs_path(root: Path, model_id: str, family: str) -> Path:
-    return Path(root) / "runs" / model_id / family / "runs.jsonl"
+    return Path(root) / "runs" / safe_model_dir(model_id) / family / "runs.jsonl"
 
 
 def existing_run_ids(path: Path) -> set[str]:
@@ -61,9 +64,11 @@ def run_cell(
     if transcript_dir is not None:
         transcript_dir.mkdir(parents=True, exist_ok=True)
         ref = str(transcript_dir / f"{rid}.json")
-        Path(ref).write_text(
-            json.dumps({"config": cfg.to_dict(), "steps": outcome.transcript}, default=str)
-        )
+        Path(ref).write_text(json.dumps({
+            "run_id": rid, "instance_id": inst.instance_id, "family": inst.family_id,
+            "answer": inst.answer, "model_id": policy.model_id, "delta_level": cell.delta_level,
+            "sweep": cell.sweep, "config": cfg.to_dict(), "steps": outcome.transcript,
+        }, default=str))
     return RunRecord(
         run_id=rid,
         instance_id=inst.instance_id,
@@ -95,37 +100,81 @@ def run_grid(
     max_cost: float | None = None,
     require_frozen: bool = False,
     save_transcripts: bool = True,
+    concurrency: int = 1,
+    progress: Callable[[int, int], None] | None = None,
 ) -> list[RunRecord]:
-    """Run every cell not already on disk; append records as JSONL; return the new records."""
+    """Run every cell not already on disk; append records as JSONL; return the new records.
+
+    With `concurrency > 1`, cells run in worker threads (model calls are I/O-bound); records are
+    still written one at a time, and the spending cap is checked after every completed run.
+    """
     root = Path(root)
     prereg_hash = prereg.check_hash() if require_frozen else prereg.current_hash()
     done: dict[Path, set[str]] = {}
-    new: list[RunRecord] = []
-    spent = 0.0
+    todo: list[tuple[Cell, Path]] = []
     for cell in cells:
         path = runs_path(root, policy.model_id, cell.instance.family_id)
         if path not in done:
             done[path] = existing_run_ids(path)
-        rid = run_id_for(
-            cell.instance.instance_id,
-            cell.cfg.arm_id,
-            cell.delta_level,
-            policy.model_id,
-            cell.replicate,
-            cell.sweep,
-        )
-        if rid in done[path]:
-            continue
-        tdir = path.parent / "transcripts" if save_transcripts else None
-        record = run_cell(cell, policy, prereg_hash, tdir)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "a") as f:
-            f.write(record.model_dump_json() + "\n")
-        done[path].add(rid)
-        new.append(record)
-        spent += record.ledger.dollars or 0.0
-        if max_cost is not None and spent > max_cost:
-            raise BudgetExceeded(f"spent ${spent:.2f} > --max-cost ${max_cost:.2f}")
+        rid = run_id_for(cell.instance.instance_id, cell.cfg.arm_id, cell.delta_level,
+                         policy.model_id, cell.replicate, cell.sweep)
+        if rid not in done[path]:
+            done[path].add(rid)
+            todo.append((cell, path))
+
+    new: list[RunRecord] = []
+    spent = 0.0
+    lock = threading.Lock()
+
+    def finish(record: RunRecord, path: Path) -> None:
+        nonlocal spent
+        with lock:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a") as f:
+                f.write(record.model_dump_json() + "\n")
+            new.append(record)
+            spent += record.ledger.dollars or 0.0
+            if progress:
+                progress(len(new), len(todo))
+
+    def over_budget() -> bool:
+        return max_cost is not None and spent > max_cost
+
+    if concurrency <= 1:
+        for cell, path in todo:
+            tdir = path.parent / "transcripts" if save_transcripts else None
+            finish(run_cell(cell, policy, prereg_hash, tdir), path)
+            if over_budget():
+                raise BudgetExceeded(f"spent ${spent:.2f} > --max-cost ${max_cost:.2f}")
+        return new
+
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+        pending = {}
+        queue = iter(todo)
+
+        def submit_next() -> bool:
+            item = next(queue, None)
+            if item is None:
+                return False
+            cell, path = item
+            tdir = path.parent / "transcripts" if save_transcripts else None
+            pending[pool.submit(run_cell, cell, policy, prereg_hash, tdir)] = path
+            return True
+
+        for _ in range(concurrency):
+            if not submit_next():
+                break
+        while pending:
+            finished, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for fut in finished:
+                path = pending.pop(fut)
+                finish(fut.result(), path)
+            if over_budget():
+                for fut in pending:
+                    fut.cancel()
+                raise BudgetExceeded(f"spent ${spent:.2f} > --max-cost ${max_cost:.2f}")
+            for _ in finished:
+                submit_next()
     return new
 
 
@@ -133,5 +182,14 @@ def load_runs(root: Path | str = "data", model_id: str | None = None) -> list[di
     root = Path(root) / "runs"
     if not root.exists():
         return []
-    files = sorted(root.glob(f"{model_id or '*'}/*/runs.jsonl"))
+    pattern = safe_model_dir(model_id) if model_id else "*"
+    files = sorted(root.glob(f"{pattern}/*/runs.jsonl"))
     return [json.loads(line) for f in files for line in f.read_text().splitlines() if line]
+
+
+def pmap(fn: Callable, items: list, concurrency: int = 1) -> list:
+    """Order-preserving parallel map used by calibration and matching."""
+    if concurrency <= 1:
+        return [fn(x) for x in items]
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+        return list(pool.map(fn, items))

@@ -42,18 +42,31 @@ def generate_many(
     return [GENERATORS[family](seed0 + offset + i, split=split, **difficulty) for i in range(count)]
 
 
-def instance_path(root: Path, family: str, version: str, split: str) -> Path:
-    return Path(root) / "instances" / family / version / f"{split}.jsonl"
+def difficulty_tag(difficulty: dict) -> str:
+    """Folder name for one difficulty setting, e.g. {"k": 3, "p": 0.1} -> "k3_p0.1"."""
+    return "_".join(f"{k}{v}" for k, v in sorted(difficulty.items()) if k != "variant") or "default"
+
+
+def instance_path(root: Path, family: str, version: str, split: str,
+                  difficulty: dict | None = None) -> Path:
+    return (Path(root) / "instances" / family / version / difficulty_tag(difficulty or {})
+            / f"{split}.jsonl")
 
 
 def save_instances(instances: list[TaskInstance], root: Path) -> Path:
     first = instances[0]
-    path = instance_path(root, first.family_id, first.family_version, first.split)
+    path = instance_path(root, first.family_id, first.family_version, first.split,
+                         dict(first.difficulty))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(i.model_dump_json() + "\n" for i in instances))
     return path
 
 
-def load_instances(root: Path, family: str, version: str, split: str) -> list[TaskInstance]:
-    path = instance_path(root, family, version, split)
+def load_instances(root: Path, family: str, version: str, split: str,
+                   difficulty: dict | None = None) -> list[TaskInstance]:
+    path = instance_path(root, family, version, split, difficulty)
     return [TaskInstance.model_validate(json.loads(line)) for line in path.read_text().splitlines()]
+
+
+def family_version(family: str) -> str:
+    return {"info": info.VERSION, "reason": reason.VERSION}.get(family, comm.VERSION)

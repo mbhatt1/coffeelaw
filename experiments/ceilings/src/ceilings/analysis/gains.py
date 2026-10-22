@@ -47,7 +47,7 @@ def paired_diffs(
     reference: str = "baseline",
     ref_delta: str = "none",
 ) -> pd.DataFrame:
-    """Per-instance (arm - reference) differences in correctness and tokens, replicates averaged."""
+    """Per-instance arm and reference correctness (replicates averaged) and their differences."""
     main = df[~df["is_sweep"] & df["valid"] & (df["model"] == model) & (df["family"] == family)]
     a = main[(main["arm"] == arm) & (main["delta"] == delta)]
     b = main[(main["arm"] == reference) & (main["delta"] == ref_delta)]
@@ -56,6 +56,8 @@ def paired_diffs(
     joined = a.join(b, lsuffix="_arm", rsuffix="_ref", how="inner")
     return pd.DataFrame(
         {
+            "arm": joined["correct_arm"],
+            "ref": joined["correct_ref"],
             "d_correct": joined["correct_arm"] - joined["correct_ref"],
             "d_tokens": joined["tokens_arm"] - joined["tokens_ref"],
         }

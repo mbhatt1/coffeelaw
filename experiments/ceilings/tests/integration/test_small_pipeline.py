@@ -43,7 +43,7 @@ def test_sim_suite_recovers_the_diagonal(tmp_path):
             save_transcripts=False,
         )
     df = runs_frame(load_runs(tmp_path))
-    res = write_reports(df, tmp_path / "reports", n_boot=500)
+    res = write_reports(df, tmp_path / "reports", n_boot=500, min_models=1)
     verdicts = {p.prediction_id: p.verdict for p in res["predictions"]}
     # Small n: equivalence on noisy control arms may stay inconclusive, but nothing may be
     # contradicted, and the two cleanest diagonals must come out supported.

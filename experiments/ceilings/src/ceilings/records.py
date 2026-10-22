@@ -94,6 +94,7 @@ class CalibrationResult(_Frozen):
     leak_rate: float
     refusal_rate: float
     passed: bool
+    baseline_mean_tokens: float | None = None
 
 
 class Arm(_Frozen):
@@ -179,7 +180,7 @@ class Prediction(_Frozen):
     statement: str
     paper_source: str
     test: str
-    verdict: Literal["supported", "contradicted", "inconclusive"]
+    verdict: Literal["supported", "contradicted", "inconclusive", "not evaluable"]
     estimate: float | None = None
     ci: tuple[float, float] | None = None
     p_adj: float | None = None

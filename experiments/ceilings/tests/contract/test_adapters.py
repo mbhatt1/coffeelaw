@@ -31,10 +31,14 @@ def test_normalize_probabilities():
     assert normalize_probabilities(None, SPACE) == {a: 0.25 for a in SPACE}
 
 
-def test_answer_schema_lists_every_option():
+def test_answer_schema_probabilities_first_and_shuffled():
     s = answer_schema(SPACE)
+    assert list(s["properties"]) == ["probabilities", "answer"]
     assert s["properties"]["answer"]["enum"] == SPACE
-    assert s["properties"]["probabilities"]["required"] == SPACE
+    shuffled = [answer_schema(SPACE, seed)["properties"]["answer"]["enum"] for seed in range(20)]
+    assert all(sorted(o) == sorted(SPACE) for o in shuffled)
+    assert len({tuple(o) for o in shuffled}) > 1
+    assert answer_schema(SPACE, 3) == answer_schema(SPACE, 3)
 
 
 class _FakeMessages:

@@ -4,6 +4,9 @@ Protocol: (1) build each agent's view; (2) tool rounds through the ToolSimulator
 the shared record; (3) message rounds through the Channel (helpers send to the answerer, or relay
 partial work down the chain D -> C -> B -> A); (4) answering agents give `samples` answers each,
 aggregated by majority vote (ties broken by mean probability) and by mean probability.
+
+Every model call is logged in the transcript with the agent, the step, the prompt and the raw
+reply, so `ceilings check` and human reviewers can verify what each agent saw and did.
 """
 
 from __future__ import annotations
@@ -70,7 +73,13 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
     def call_seed() -> int:
         return int(rng.integers(2**31))
 
-    # (2) Tool rounds: probes are issued round-robin by the team; results go to everyone.
+    def charge(agent: str, usage) -> None:
+        ledger.add_call(agent, usage.input_tokens, usage.output_tokens, usage.reasoning_tokens,
+                        usage.dollars)
+
+    # (2) Tool rounds. With the default "rotation" policy the harness probes attribute t mod k, so
+    # every model receives the same evidence and the test isolates whether it can use it; with
+    # "agent" the probing agent (round-robin over the team) chooses. Results go to everyone.
     if cfg.tool_rounds and instance.tool is not None:
         tool = ToolSimulator(
             instance.tool,
@@ -81,84 +90,57 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
         )
         for t in range(cfg.tool_rounds):
             prober = names[t % len(names)]
-            query, usage = policy.choose_probe(views[prober], cfg.depth, call_seed())
-            ledger.add_call(
-                prober,
-                usage.input_tokens,
-                usage.output_tokens,
-                usage.reasoning_tokens,
-                usage.dollars,
-            )
+            if cfg.probe_policy == "agent":
+                action = policy.choose_probe(views[prober], cfg.depth, call_seed())
+                charge(prober, action.usage)
+                query, log = action.value, action.log
+            else:
+                query, log = t % instance.payload["public"]["k"], None
             result = tool.probe(query)
             for v in views.values():
                 v.tool_results.append((query, result))
-            transcript.append({"step": "probe", "agent": prober, "query": query, "result": result})
+            transcript.append({"step": "probe", "agent": prober, "query": query,
+                               "result": result, "policy": cfg.probe_policy, "call": log})
 
     # (3) Message rounds.
-    if (cfg.message_budget > 0 or cfg.relay) and len(names) > 1:
+    # A bit budget of 0 means nothing can cross, so no message calls are made (and none charged).
+    can_send = cfg.message_budget > 0 or (cfg.relay and cfg.message_mode == "tokens")
+    if can_send and len(names) > 1:
         channel = Channel(cfg.message_mode, cfg.message_budget, ledger, policy.count_tokens)
         chain = list(reversed(names))  # D -> C -> B -> A when relaying; B -> A with two agents
         senders = chain[:-1] if cfg.relay else [n for n in names if n not in cfg.answerers]
         for i, sender in enumerate(senders):
             receiver = chain[i + 1] if cfg.relay else cfg.answerers[0]
+            calls: list[dict] = []
 
-            def compose(retry, sender=sender, receiver=receiver):
-                text, usage = policy.compose(
-                    views[sender],
-                    cfg.depth,
-                    cfg.message_mode,
-                    cfg.message_budget,
-                    retry,
-                    call_seed(),
-                )
-                ledger.add_call(
-                    sender,
-                    usage.input_tokens,
-                    usage.output_tokens,
-                    usage.reasoning_tokens,
-                    usage.dollars,
-                )
-                return text
+            def compose(retry, sender=sender, receiver=receiver, calls=calls):
+                action = policy.compose(views[sender], receiver, cfg.depth, cfg.message_mode,
+                                        cfg.message_budget, retry, call_seed())
+                charge(sender, action.usage)
+                calls.append(action.log)
+                return action.value
 
             delivery = channel.send(sender, receiver, compose)
             if delivery.text:
-                views[receiver].inbox.append(delivery.text)
-            transcript.append(
-                {
-                    "step": "message",
-                    "from": sender,
-                    "to": receiver,
-                    "text": delivery.text,
-                    "bits": delivery.bits,
-                    "tokens": delivery.tokens,
-                    "retried": delivery.retried,
-                    "truncated": delivery.truncated,
-                }
-            )
+                views[receiver].inbox.append((sender, delivery.text))
+            transcript.append({
+                "step": "message", "from": sender, "to": receiver, "text": delivery.text,
+                "bits": delivery.bits, "tokens": delivery.tokens, "retried": delivery.retried,
+                "truncated": delivery.truncated, "budget": cfg.message_budget,
+                "mode": cfg.message_mode, "calls": calls,
+            })
 
     # (4) Answers.
     results = []
     for name in cfg.answerers:
         for _ in range(cfg.samples):
             res = policy.answer(views[name], cfg.depth, call_seed())
-            ledger.add_call(
-                name,
-                res.usage.input_tokens,
-                res.usage.output_tokens,
-                res.usage.reasoning_tokens,
-                res.usage.dollars,
-            )
+            charge(name, res.usage)
             request_ids.append(res.request_id)
             results.append(res)
-            transcript.append(
-                {
-                    "step": "answer",
-                    "agent": name,
-                    "answer": res.final_answer,
-                    "probabilities": res.probabilities,
-                    "refusal": res.refusal,
-                }
-            )
+            transcript.append({"step": "answer", "agent": name, "answer": res.final_answer,
+                               "probabilities": res.probabilities, "refusal": res.refusal,
+                               "valid": res.valid, "call": res.extra.get("log")})
 
     space = instance.answer_space
     mean = {a: float(np.mean([r.probabilities.get(a, 0.0) for r in results])) for a in space}
@@ -172,13 +154,5 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
     else:
         final = None
     refusal = next((r.refusal for r in results if r.refusal), None)
-    return TeamOutcome(
-        final,
-        mean,
-        [r.final_answer for r in results],
-        refusal,
-        all(r.valid for r in results),
-        ledger,
-        transcript,
-        request_ids,
-    )
+    return TeamOutcome(final, mean, [r.final_answer for r in results], refusal,
+                       all(r.valid for r in results), ledger, transcript, request_ids)
