@@ -37,6 +37,7 @@ task ([Theorems 9–10](formal_proofs/formal_proofs.md#theorem-9)).
   know, and what remains open
 - [Information geometry](formal_proofs/proof.md)
 - [From any agent to LLMs](formal_proofs/llm_specialization.md)
+- [The Defense Trilemma: a companion result](formal_proofs/defense-trilemma.md) — why continuous wrapper defenses face a three-way trade-off, and how it relates to the Coffee Law
 
 **Check it:**
 
