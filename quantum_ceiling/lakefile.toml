@@ -1,0 +1,5 @@
+name = "QuantumCeiling"
+defaultTargets = ["QuantumCeiling"]
+
+[[lean_lib]]
+name = "QuantumCeiling"
