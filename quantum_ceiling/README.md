@@ -1,39 +1,45 @@
-# Quantum ceiling: Palmer's qubit bound in Lean 4
+# Quantum ceiling: Palmer's qubit bound, derived in Lean 4 + Mathlib
 
-Lean 4 formalization of the counting argument behind Tim Palmer's proposed
-quantum-computing ceiling (T. N. Palmer, *Rational Quantum Mechanics: Testing
-Quantum Theory with Quantum Computers*, arXiv:2510.02877, published in PNAS in 2026). No Mathlib needed and no `sorry`.
-Only the standard axioms are used.
+Tim Palmer (*Rational Quantum Mechanics: Testing Quantum Theory with Quantum
+Computers*, arXiv:2510.02877; PNAS 2026) proposes that `N` entangled qubits
+carry only `N·L` bits, for a finite per-qubit capacity `L` set by gravity, so
+exponential quantum speedups saturate near 1,000 qubits.
+
+This project **derives** the resulting ceiling from the structure of quantum
+state space, instead of assuming the counting inequality.
 
 ```bash
+lake exe cache get   # or build Mathlib from source
 lake build
 ```
 
-## The argument (Coffee-Law shape: budget vs. demand)
+## Setting
 
-| | Grows like | Formalized as |
-|---|---|---|
-| Demand: real degrees of freedom of an `N`-qubit state | `2^(N+1) − 2` | `Palmer.dof` |
-| Budget: bits in `N` entangled qubits under RaQM | `N · L` | `Palmer.capacity` |
-| Ceiling: last `N` with demand ≤ budget | `N_max ≈ log₂ L` | `Palmer.Representable` |
+- Pure `N`-qubit states are rays in `ℂ^(2^N)`, Mathlib's `Projectivization ℂ (Basis N → ℂ)`.
+- Phase states `Σₓ (-1)^f(x) |x⟩` are the oracle states of Deutsch–Jozsa,
+  Bernstein–Vazirani and Grover. Every amplitude has squared modulus `1/2^N`
+  and phase `0` or `π`, so they satisfy RaQM's rationality constraints.
 
-## What is proved (`QuantumCeiling/Palmer.lean`)
+## Theorems (`QuantumCeiling/PhaseStates.lean`)
 
-- `worked_example`: the paper's example, `L = 16 ⇒ N_max = 5`.
-- `fail_forever`: once a register size fails, every larger one fails, so the ceiling is permanent.
-- `nmax_at_two_pow_640`: `L = 2^640` (≈ 10^193, the figure from Palmer's 2025 talk) gives `N_max = 648` exactly.
-- `palmer_cap`: any `L ≤ 2^990` ⇒ at most 1,000 qubits.
-- `no_ceiling_without_L`: for every `N` some `L` represents it, so the counting argument on its own forces no ceiling.
-- `falsified_by`: a genuine general 1,001-qubit state implies `L > 2^990`, refuting every estimate in the paper.
+| Theorem | Statement |
+|---|---|
+| `phaseState_inj`, `phaseState_injective` | distinct sign patterns (global phase fixed) are physically distinct states |
+| `card_phaseStates` | there are `2^(2^N − 1)` of them |
+| `budget_forces_ceiling` | **main:** a state space with `≤ 2^(N·L)` states that contains every phase state forces `2^N − 1 ≤ N·L` |
+| `ceiling_permanent` | once infeasible, infeasible for every larger `N` |
+| `ceiling_log` | `N ≤ log₂(N·L + 1)`, i.e. `N_max ≈ log₂ L` |
+| `ceiling_1000`, `palmer_ceiling` | `L ≤ 2^990` (every estimate in the paper) ⇒ `N ≤ 999` |
+| `no_linear_budget` | for every finite `L`, some register size has no `N·L`-bit theory containing all phase states, so Palmer's premise and standard QM are incompatible |
 
-`QuantumCeiling/Basic.lean` is a coarser, size-independent-budget model. It adds
-`encoding_ceiling` (error correction cannot lift a fixed budget) and
-`ceiling_independent` (both a capped world and standard QM are consistent).
+Our bound `2^N − 1 ≤ N·L` is half of Palmer's `2^(N+1) − 2`. He charges a bit
+per real degree of freedom; phase states only use one sign per basis state. The
+result is weaker, but it is exact: no approximation argument is needed.
 
 ## What is not proved
 
-Lean checks the arithmetic, not the physics. That nature is described by RaQM,
-and the value of `L` (which the paper estimates from Diósi–Penrose gravitational
-collapse), are hypotheses. The paper itself says RaQM and standard QM are
-experimentally indistinguishable for small numbers of qubits. Only an
-experiment at hundreds of qubits can decide between them.
+Lean checks mathematics, not nature. Two hypotheses carry all the physics:
+the `N·L`-bit budget, which is Palmer's premise, and the value of `L`, which he
+estimates from Diósi–Penrose gravitational collapse. The theorems show the
+ceiling follows from the budget, and that a computation which genuinely uses
+phase states on more than about `log₂ L` qubits refutes it.
