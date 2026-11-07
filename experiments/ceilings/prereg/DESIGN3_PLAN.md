@@ -304,20 +304,25 @@ these runs can't be seeded, and their cost can't be matched to the other arms.
 
 ## Order of work
 
+Steps 1-5 are done (2026-11-05); results in [RESULTS.md](../RESULTS.md) and
+[results/design3-2026-11/](../results/design3-2026-11/).
+
 1. Implement the team loop, the arms (S, L, W, R, W0), the sectioned task layout, the ledger
-   additions and the checks, with SimPolicy tests. Free.
-2. Pilot to choose d (solo only, 100 instances per model), then pilot cost (20 per arm). Done
-   for cost at d = 12; the chain-length pilot is still to run.
-3. Match S_ref per model and team at the chosen d and B (`ceilings team-match`).
+   additions and the checks, with SimPolicy tests. Free. **Done.**
+2. Pilot to choose d (solo only, 100 instances per model), then pilot cost (20 per arm).
+   **Done:** cost pilot at d = 12, chain-length pilot $0.43
+   ([chain_length_pilot.csv](../results/design3-2026-11/chain_length_pilot.csv)).
+3. Match S_ref per model and team at the chosen d and B (`ceilings team-match`). **Done.**
 4. Fill in B, d and n per model, add a DEVIATIONS.md entry, then `ceilings prereg freeze`.
-5. Main run (`ceilings team-run --with-refs`) with per-phase spending caps, then `check`, `audit`
-   and `analyze`.
+   **Done** (hash `ccfdafd2…`).
+5. Main run (`ceilings team-run --with-refs`) with per-phase spending caps, then `check` and
+   `team-analyze`. **Done.**
 6. Later, after the main arms: the Claude Code arm (decided 2026-11-03).
 
 ## Open decisions
 
-- How much budget to add for the main grid, after the pilot cost is known.
-- Which credentials the Claude Code arm uses, when it comes up.
+- Which credentials the Claude Code arm uses, when it comes up. (The budget for the main grid
+  was settled after matching: n per model in `run_plan`.)
 - Whether the tools-on (Bash) variant is wanted.
 
 ## Extensions (not in this design)

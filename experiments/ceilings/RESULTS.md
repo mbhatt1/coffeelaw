@@ -14,6 +14,7 @@ per cell and the design pre-registered before each run.
   [prereg/DESIGN3_PLAN.md](prereg/DESIGN3_PLAN.md)):
   - pre-registration in [prereg/](prereg/), hash `ccfdafd2…`;
   - outputs in [results/design3-2026-11/](results/design3-2026-11/).
+- Figures: [results/final-figures/](results/final-figures/), drawn by `python scripts/plot_final.py` from the committed results.
 - Raw runs and transcripts are in `data/` (not committed). Departures from the plans are in
   [prereg/DEVIATIONS.md](prereg/DEVIATIONS.md).
 
@@ -55,6 +56,8 @@ pass equivalence at ±0.05 after Holm correction across the model's tests.
 Every baseline is at chance: info 2^known/2^k, reason 0.25, comm 0.5. The full tables are in each
 results folder's `tests.csv` and `gain_table.csv`.
 
+![Gains over baseline by task family and arm](results/final-figures/1_gains_by_family.png)
+
 ### Reasoning (H2 and H5)
 
 | Model | Baseline | K | K gain (95% CI) | A2 | One agent, same compute | A2 − one agent |
@@ -64,6 +67,8 @@ results folder's `tests.csv` and `gain_table.csv`.
 | gpt-4o-mini | 0.27 | 0.92 | +0.64 (+0.61, +0.68) | 0.892 | 0.907 | −0.015 |
 | MiMo v2.6 flash | 0.24 | 0.98 | +0.74 (+0.71, +0.77) | 0.999 | 0.985 | +0.014 |
 | GLM 4.7 flash | 0.27 | 0.92 | +0.65 (+0.61, +0.68) | 0.875 | 0.939 | −0.064 |
+
+![Reasoning: K against baseline, and A2 against one agent with the same compute](results/final-figures/2_reasoning_and_splitting.png)
 
 **H2:**
 - K helps on every model (exact McNemar p < 1e-95).
@@ -90,6 +95,14 @@ separate instances). Every agent holds every fact, so a team can only lose by ho
 passes on the work. The task is a chain of d shift offsets (GLM and Mistral d = 6, MiMo d = 12),
 n = 300 paired instances (MiMo 250).
 
+**Chain length (pilot, 2026-11-04).** d was chosen per model from one agent alone, 100
+instances per step ($0.43, [chain_length_pilot.csv](results/design3-2026-11/chain_length_pilot.csv)):
+MiMo 0.66 at d = 12; GLM 0.47, 0.33 and 0.28 at d = 6, 9 and 12; Mistral 0.35, 0.32 and 0.28;
+DeepSeek 0.94-1.00 up to d = 24, so it was dropped at ceiling. Only MiMo met the original
+0.50-0.85 rule. Chains were kept at 6 links or more so the work divides into parts, and the
+floor was lowered to 0.35 (chance + 0.10), which picks d = 6 for GLM and Mistral
+([DESIGN3_PLAN](prereg/DESIGN3_PLAN.md)).
+
 | Model | Alone (S) | Team | Team | S_ref | S_ref | Team − S_ref (95% CI) | S_ref spend vs team |
 |---|---|---|---|---|---|---|---|
 | Mistral Small 3.2 | 0.66 | L lead + workers | 0.610 | `max:4` | 0.733 | −0.123 (−0.190, −0.055) | +9% |
@@ -101,6 +114,8 @@ n = 300 paired instances (MiMo 250).
 | MiMo v2.6 flash | 0.80 | L | 0.924 | `max:4.5` | 0.880 | +0.044 (−0.009, +0.098) | +38% |
 | | | W | 0.912 | `max:7` | 0.920 | −0.008 (−0.058, +0.042) | +7% |
 | | | R | 0.752 | `max:1.7` | 0.768 | −0.016 (−0.083, +0.051) | +14% |
+
+![Agent teams against one agent with the same token budget, and copying of wrong claims](results/final-figures/5_agent_teams.png)
 
 **H5a (no team beats one agent that spends as much):**
 - No team significantly beats its S_ref on any model (smallest Holm-adjusted superiority
@@ -180,7 +195,7 @@ The gates have two stages:
 - Nemotron's answers were truncated at the 400-token answer cap in 11.9% of samples (up to 46% in
   one cell), which only adds error.
 
-![H6: error against probes with the Fano floor](results/paid-2026-10/figures/3_h6_probes_vs_fano.png)
+![H6: error against probes with the Fano floor](results/final-figures/3_error_vs_probes.png)
 
 **H7** (comm, 16 bits, message budget L ∈ {0…16}):
 - Parity jumps from 0.47–0.55 at L = 0 to 0.97–1.00 at L = 1 on all four models.
@@ -188,7 +203,7 @@ The gates have two stages:
   0.61, MiMo 0.81, DeepSeek 0.82, Nemotron 0.88).
 - Every message carried at most L bits.
 
-![H7: accuracy against message bits](results/paid-2026-10/figures/2_h7_message_bits.png)
+![H7: accuracy against message bits](results/final-figures/4_accuracy_vs_message_bits.png)
 
 ## Limitations
 
@@ -203,7 +218,9 @@ The gates have two stages:
   baseline's single samples, so H1 and H3 are unaffected.
 - **The delta curves (small and large delta on Gemma, Mistral and MiMo) cannot show whether gains
   depend on cost.** E and M already sit at their useful maximum at small delta, so the extra
-  budget is filler. They do show that filler and the wrong resource add nothing at any level.
+  budget is filler. They do show that filler and the wrong resource add nothing at any level
+  ([figure](results/final-figures/6_gains_vs_budget.png); the reason curves are left out, since they used the
+  October K that the rerun replaced).
 - **Cost-matching misses (`ceilings audit`):**
   - October run: 12 medium cells outside ±5% in the arms the verdicts use, mostly 5-8%. The
     largest are Nemotron comm_ip K (+30.5%) and Qwen comm_ip K (−13%).

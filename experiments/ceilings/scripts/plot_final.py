@@ -1,7 +1,7 @@
-"""The five final figures, one per experiment, from the committed results only (no raw runs).
+"""The six final figures, one per experiment, from the committed results only (no raw runs).
 
 Only the current version of each experiment is drawn:
-- H1, H3, H4 (info and comm families), H6 and H7: results/paid-2026-10/
+- H1, H3, H4 (info and comm families), the delta curves, H6 and H7: results/paid-2026-10/
 - H2 and H5 (reason family, arm design 2 rerun, replacing the October reason results):
   results/design2-2026-11/
 - H5a-H5c (agent teams, arm design 3): results/design3-2026-11/
@@ -207,5 +207,42 @@ fig.legend(*left.get_legend_handles_labels(), ncol=4, loc="upper center",
            bbox_to_anchor=(0.5, 0.0))
 fig.tight_layout()
 save(fig, "5_agent_teams.png")
+
+# 6. Delta curves: gains at half, normal and double the budget. The reason curves are left out:
+# they used the October K, which the design-2 rerun replaced (at medium budget only).
+gains = pd.read_csv(PAID / "gain_table.csv")
+CURVE_MODELS = ["openai/google/gemma-3-27b-it", "openai/mistralai/mistral-small-3.2-24b-instruct",
+                "openai/xiaomi/mimo-v2.6-flash"]
+CURVE_FAMILIES = [("info", "Information (E)"), ("comm_parity", "Communication: parity (M)"),
+                  ("comm_ip", "Communication: inner product (M)")]
+MATCH = {"info": "E", "comm_parity": "M", "comm_ip": "M"}
+OTHER = ["E", "K", "M", "A1", "P1", "P2"]
+LEVELS = ["small", "medium", "large"]
+passed = {(gt["model"], gt["family"]) for gt in json.loads((PAID / "gates.json").read_text())
+          if gt["passed"]}
+fig, axes = plt.subplots(1, 3, figsize=(14, 4.5), sharey=True)
+for ax, (fam, title) in zip(axes, CURVE_FAMILIES, strict=True):
+    for k, model in enumerate(CURVE_MODELS):
+        c = gains[(gains.model == model) & (gains.family == fam)]
+        if (model, fam) not in passed or set(c.delta) != set(LEVELS):
+            continue
+        match = c[c.arm == MATCH[fam]].set_index("delta").reindex(LEVELS).gain
+        rest = (c[c.arm.isin([x for x in OTHER if x != MATCH[fam]])]
+                .groupby("delta").gain.mean().reindex(LEVELS))
+        ax.plot(LEVELS, match, marker="o", color=f"C{k}", label=name(model))
+        ax.plot(LEVELS, rest, marker="o", linestyle=":", color=f"C{k}")
+    ax.axhline(0, color="gray", linewidth=0.8)
+    ax.set_xticks(range(3), ["Half (small)", "Normal (medium)", "Double (large)"])
+    ax.set_xlabel("Budget")
+    ax.set_title(title)
+axes[0].set_ylabel("Gain in accuracy over the baseline")
+handles, labels = axes[0].get_legend_handles_labels()
+handles += [plt.Line2D([], [], color="gray", marker="o"),
+            plt.Line2D([], [], color="gray", marker="o", linestyle=":")]
+labels += ["Solid: the missing resource", "Dotted: mean of the other arms"]
+fig.legend(handles, labels, ncol=5, loc="upper center", bbox_to_anchor=(0.5, 0.0))
+fig.suptitle("Gains stay the same at half and double the budget")
+fig.tight_layout()
+save(fig, "6_gains_vs_budget.png")
 
 print("\n".join(str(f) for f in sorted(out.glob("*.png"))))

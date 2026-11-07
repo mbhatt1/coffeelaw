@@ -10,7 +10,10 @@ resource budgets.
 - Notebook: [notebooks/ceilings_small_run.ipynb](notebooks/ceilings_small_run.ipynb)
 - Local test-run findings: [TESTING.md](TESTING.md)
 - Free-tier pilot on NVIDIA build (Oct 2026): [PILOT_RESULTS.md](PILOT_RESULTS.md)
-- Paid run on OpenRouter, ten models (Oct 2026): [RESULTS.md](RESULTS.md)
+- Results of all finished experiments, current versions only: [RESULTS.md](RESULTS.md)
+  (the October 2026 paid run on ten OpenRouter models, the November 2026 reasoning rerun
+  and the agent-team run), with the figures in
+  [results/final-figures/](results/final-figures/) (`python scripts/plot_final.py`)
 
 The fork is public: <https://github.com/Ishan-K-S/coffeelaw>; this project lives in
 `experiments/ceilings/`. The rest of the repository is the upstream paper code from
@@ -127,12 +130,12 @@ Temperature is sent explicitly (`CEILINGS_TEMPERATURE`, default 0.7). Claude kee
 **off**, so no model substitution can occur, and every adapter marks a run invalid if the provider
 serves a different model.
 
-### Agent teams (arm design 3, not yet run)
+### Agent teams (arm design 3, run in November 2026)
 
 Design 2's A2 was a fixed relay of one-call agents, and on weaker models the final agent copied
 the wrong guesses it was sent. Design 3 tests H5 on teams that work the way deployed agent systems
-do (`ceilings.teams`; plan and pre-registration draft in
-[prereg/DESIGN3_PLAN.md](prereg/DESIGN3_PLAN.md)):
+do (`ceilings.teams`; plan and pre-registration in
+[prereg/DESIGN3_PLAN.md](prereg/DESIGN3_PLAN.md); results in [RESULTS.md](RESULTS.md)):
 
 - Every agent runs a loop of turns: it thinks (a reasoning stage at medium depth), then takes one
   action written as JSON, and the harness shows the result in its next turn.
@@ -154,10 +157,12 @@ do (`ceilings.teams`; plan and pre-registration draft in
 ```bash
 ceilings --root data/design3 team-match --model sim-bounded --d 12 --budget 20000
 ceilings --root data/design3 team-run --model sim-bounded --d 12 --n 20 --budget 20000 --with-refs
+ceilings --root data/design3 team-analyze
 ```
 
-`--budget 0` runs without a token cap (the chain-length pilot). Analysis of the team arms
-(H5a-H5c) is not written yet.
+`--budget 0` runs without a token cap (the chain-length pilot). `ceilings --root data/design3
+team-analyze` tests H5a-H5c against each team's matched S_ref (matching instances are left
+out) and writes `team_tests.csv`, `team_mechanism.csv` and `team_verdicts.json`.
 
 ## A real run, in order
 
