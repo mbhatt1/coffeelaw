@@ -6,7 +6,9 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
-from ceilings.records import TaskInstance
+import numpy as np
+
+from ceilings.records import TaskInstance, content_hash
 from ceilings.tasks import comm, info, reason
 
 BINDING = {
@@ -35,11 +37,56 @@ def evidence_for_arm_e(instance: TaskInstance, amount: int) -> str:
     return ""
 
 
+TRIES = 4096
+
+
 def generate_many(
-    family: str, count: int, split: str, seed0: int = 0, **difficulty
+    family: str, count: int, split: str, seed0: int = 0, balance: bool = True, **difficulty
 ) -> list[TaskInstance]:
-    offset = {"calibration": 1_000_000, "main": 0, "heldout_blind": 2_000_000}[split]
-    return [GENERATORS[family](seed0 + offset + i, split=split, **difficulty) for i in range(count)]
+    """`count` instances with deterministic seeds. With `balance`, true answers cycle through
+    every option in a seeded order, so each label is the truth equally often (the pilot's 30
+    instances had host-00 as the truth twice, and floor accuracy tracked that); instance i takes
+    the first seed in its own block whose answer is its target label.
+
+    With `balance`, no two instances show the same prompt: a seed whose prompt is already taken is
+    skipped, and a setting with too few distinct prompts raises instead of repeating them (the
+    paid run's Gemma info cell, k=2, had only 96 distinct prompts behind 850 instances, so its
+    tests counted repeats as independent evidence)."""
+    offset = {"calibration": 1_000_000, "main": 0, "heldout_blind": 2_000_000,
+              "design3": 3_000_000}[split]
+    gen = GENERATORS[family]
+    if not balance:
+        return [gen(seed0 + offset + i, split=split, **difficulty) for i in range(count)]
+    space = gen(seed0 + offset, split=split, **difficulty).answer_space
+    targets = [space[int(j)] for j in
+               np.random.default_rng([seed0, offset, len(space)]).permutation(len(space))]
+    out = []
+    seen: set[str] = set()
+    for i in range(count):
+        start = seed0 + offset + i * TRIES
+        for seed in range(start, start + TRIES):
+            inst = gen(seed, split=split, **difficulty)
+            if inst.answer == targets[i % len(targets)] and prompt_key(inst) not in seen:
+                seen.add(prompt_key(inst))
+                out.append(inst)
+                break
+        else:
+            raise RuntimeError(f"no new {family} instance with answer "
+                               f"{targets[i % len(targets)]} after {len(out)} instances: "
+                               f"{difficulty} has too few distinct prompts for {count}")
+    return out
+
+
+def prompt_key(inst: TaskInstance) -> str:
+    """What every agent is shown, and the truth: two instances with the same key are one item."""
+    return content_hash([inst.scenario, inst.shared_evidence, inst.private_evidence, inst.answer])
+
+
+def chance(instance: TaskInstance) -> float:
+    """Expected accuracy with no information beyond what the instance states up front."""
+    known = instance.payload.get("public", {}).get("known", 0) if instance.family_id == "info" \
+        else 0
+    return min(1.0, 2**known / len(instance.answer_space))
 
 
 def difficulty_tag(difficulty: dict) -> str:
@@ -58,7 +105,16 @@ def save_instances(instances: list[TaskInstance], root: Path) -> Path:
     path = instance_path(root, first.family_id, first.family_version, first.split,
                          dict(first.difficulty))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(i.model_dump_json() + "\n" for i in instances))
+    # Merge with what is there: the file is keyed by setting, not by seed, so the S_ref matching
+    # instances and the main grid's (same family, split and difficulty, other seeds) share it, and
+    # writing only the latest set once lost the other (design-3 main run, November 2026).
+    lines = {}
+    if path.exists():
+        for line in path.read_text().splitlines():
+            lines[json.loads(line)["instance_id"]] = line
+    for i in instances:
+        lines[i.instance_id] = i.model_dump_json()
+    path.write_text("".join(line + "\n" for line in lines.values()))
     return path
 
 

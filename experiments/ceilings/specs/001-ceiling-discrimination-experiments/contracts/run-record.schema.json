@@ -36,7 +36,7 @@
     },
     "arm_id": {
       "type": "string",
-      "pattern": "^(baseline|E|K|M|A1|A2|A2_single_ref|P1|P2|E\\+K|M\\+K)$"
+      "pattern": "^(baseline|E|K|M|A1|A2|A2_single_ref|P1|P2|E\\+K|M\\+K|S|L|W|R|W0|S_ref)$"
     },
     "delta_level": {
       "type": [
@@ -87,6 +87,18 @@
         }
       }
     },
+    "harness": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Harness options in effect (ceilings.options): the non-default options plus a 'resolved' block."
+    },
+    "arm_design": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "ceilings.arms.ARM_DESIGN when the run was made; records without it are design 1"
+    },
     "prereg_hash": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
@@ -105,6 +117,15 @@
     },
     "correct": {
       "type": "boolean"
+    },
+    "p_true": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "The team's aggregated probability on the true answer."
     },
     "valid": {
       "type": "boolean",
@@ -222,6 +243,13 @@
           "minimum": 0
         }
       }
+    },
+    "team": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "arm design 3 teams (ceilings.teams): turns, workers, forced answers, budget"
     },
     "transcript_ref": {
       "type": "string"

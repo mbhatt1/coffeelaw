@@ -10,8 +10,10 @@ import time
 from pathlib import Path
 
 from ceilings import arms, experiment, prereg, tasks
+from ceilings.adapters.base import RequestCapExceeded
 from ceilings.agents import make_policy
 from ceilings.audit import audit
+from ceilings.options import HarnessOptions
 from ceilings.runner import BudgetExceeded, load_runs, run_grid
 
 ALL_FAMILIES = "info,reason,comm_parity,comm_ip"
@@ -23,7 +25,10 @@ def _difficulty(text: str | None, family: str) -> dict | None:
     out = {}
     for part in text.split(","):
         key, value = part.split("=")
-        out[key] = float(value) if "." in value else int(value)
+        try:
+            out[key] = float(value) if "." in value else int(value)
+        except ValueError:
+            out[key] = value  # e.g. layout=sections
     return out
 
 
@@ -41,6 +46,16 @@ def _progress(label: str):
     return report
 
 
+def _policy(a):
+    """The model policy with `--harness` options, and `--max-requests` applied to adapters that
+    count requests."""
+    policy = make_policy(a.model, HarnessOptions.parse(getattr(a, "harness", None)))
+    adapter = getattr(policy, "adapter", None)
+    if getattr(a, "max_requests", None) is not None and adapter is not None:
+        adapter.max_requests = a.max_requests
+    return policy
+
+
 def cmd_generate(a) -> int:
     for fam in a.family.split(","):
         diff = _difficulty(a.difficulty, fam) or experiment.DEFAULT_DIFFICULTY[fam]
@@ -53,11 +68,13 @@ def cmd_calibrate(a) -> int:
     """Search each family's difficulty grid for a setting that passes the gate on this model."""
     from ceilings.calibration import save_json, search_difficulty
 
-    policy = make_policy(a.model)
+    policy = _policy(a)
     failed = False
     for fam in a.family.split(","):
+        out = experiment.difficulty_path(a.root, fam, policy.model_id)
         res = search_difficulty(fam, policy, n=a.n, concurrency=a.concurrency,
-                                grid="quick" if a.grid == "quick" else None)
+                                grid="quick" if a.grid == "quick" else None,
+                                cache_path=out.with_suffix(".settings.json"))
         save_json(res, experiment.difficulty_path(a.root, fam, policy.model_id))
         for r in res["results"]:
             print(f"{fam} {r['difficulty']}: baseline {r['baseline_acc']:.2f} (chance "
@@ -69,13 +86,13 @@ def cmd_calibrate(a) -> int:
 
 
 def cmd_prepare(a) -> int:
-    policy = make_policy(a.model)
+    policy = _policy(a)
     failed = False
     for fam in a.family.split(","):
         res = experiment.prepare(
             fam, policy, a.root, a.n_main, a.n_pilot, _difficulty(a.difficulty, fam),
             concurrency=a.concurrency, levels=_levels(a.delta), n_match=a.n_match,
-            match=not a.no_match,
+            match=not a.no_match, gate=a.gate,
         )
         cal = res["calibration"]
         unmatched = [f"{arm}/{lvl}" for arm, v in res["table"]["arms"].items()
@@ -90,10 +107,17 @@ def cmd_prepare(a) -> int:
 
 
 def cmd_run(a) -> int:
-    policy = make_policy(a.model)
+    policy = _policy(a)
     total = 0
     for fam in a.family.split(","):
         table = experiment.load_table(a.root, fam, policy.model_id)
+        matched_under = table.get("harness", {})
+        if json.loads(json.dumps(matched_under)) != json.loads(json.dumps(
+                policy.options.non_default(), default=list)):
+            print(f"error: {fam} arms were matched under harness {matched_under}, not "
+                  f"{policy.options.non_default()}; run prepare with the same --harness",
+                  file=sys.stderr)
+            return 2
         insts = experiment.load_main(a.root, fam, policy.model_id, a.split)[: a.limit]
         cells = experiment.main_cells(
             insts, table, deltas=tuple(a.delta.split(",")), arm_ids=tuple(a.arms.split(","))
@@ -105,8 +129,90 @@ def cmd_run(a) -> int:
     return 0
 
 
+def cmd_team_run(a) -> int:
+    """Arm design 3 (prereg/DESIGN3_PLAN.md): agent teams on the sectioned reason family."""
+    from ceilings.runner import Cell
+    from ceilings.team_match import load_table
+    from ceilings.teams import ref_config, team_config
+
+    policy = _policy(a)
+    insts = tasks.generate_many("reason", a.n, a.split, a.seed, d=a.d, layout="sections")
+    tasks.save_instances(insts, Path(a.root))  # `ceilings check` reads them back
+    arm_ids = a.arms.split(",")
+    cells = [Cell(inst, team_config(arm, a.budget, max_turns=a.max_turns))
+             for arm in arm_ids for inst in insts]
+    if a.with_refs:
+        table = load_table(a.root, policy.model_id)
+        made = (table["difficulty"].get("d"), table["budget"], table["max_turns"])
+        if made != (a.d, a.budget, a.max_turns):
+            print(f"error: the S_ref table was matched at d, budget, max_turns = {made}, not "
+                  f"{(a.d, a.budget, a.max_turns)}", file=sys.stderr)
+            return 2
+        strengths = sorted({table["arms"][arm]["strength"] for arm in arm_ids
+                            if arm in table["arms"]})
+        cells += [Cell(inst, ref_config(st, a.budget, max_turns=a.max_turns))
+                  for st in strengths for inst in insts]
+    new = run_grid(cells, policy, a.root, a.max_cost, require_frozen=a.require_frozen,
+                   concurrency=a.concurrency, progress=_progress(f"reason d={a.d}"))
+    print(f"new runs: {len(new)}")
+    return 0
+
+
+def cmd_team_match(a) -> int:
+    """Match S_ref (one agent, deeper reasoning, then several attempts) to each team's spend."""
+    from ceilings.team_match import match
+    from ceilings.teams import team_config
+
+    policy = _policy(a)
+    insts = tasks.generate_many("reason", a.n, a.split, a.seed, d=a.d, layout="sections")
+    tasks.save_instances(insts, Path(a.root))
+    teams = {arm: team_config(arm, a.budget, max_turns=a.max_turns) for arm in a.arms.split(",")}
+    table = match(policy, insts, teams, a.root, a.max_cost, a.concurrency,
+                  progress=_progress(f"match d={a.d}"))
+    for arm, e in table["arms"].items():
+        print(f"{arm}: team {e['target_tokens']:.0f} tokens -> S_ref {e['strength']} "
+              f"{e['ref_tokens']:.0f} ({e['gap']:+.0%}{'' if e['matched'] else ', UNMATCHED'})")
+    print(f"spent ${table['dollars']:.3f}")
+    return 0 if all(e["matched"] for e in table["arms"].values()) else 2
+
+
+def cmd_team_analyze(a) -> int:
+    """H5a-H5c for the design-3 teams, each paired with its matched S_ref."""
+    import pandas as pd
+
+    from ceilings.analysis.teams import mechanism, spearman, team_tests
+    from ceilings.checks import load_instances_index
+
+    tables = {}
+    for path in sorted(Path(a.root, "team_match").glob("*.json")):
+        t = json.loads(path.read_text())
+        tables[t["model_id"]] = t
+    if not tables:
+        print(f"error: no matching tables under {a.root}/team_match", file=sys.stderr)
+        return 2
+    records = load_runs(a.root)
+    res = team_tests(records, tables)
+    mech = mechanism(records, load_instances_index(a.root), res["tests"],
+                     {m: set(t.get("instances", [])) for m, t in tables.items()})
+    res["H5c"] = {"cells": mech, "spearman": spearman(mech)}
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "team_verdicts.json").write_text(json.dumps(res, indent=2))
+    pd.DataFrame(res["tests"]).to_csv(out / "team_tests.csv", index=False)
+    pd.DataFrame(mech).to_csv(out / "team_mechanism.csv", index=False)
+    for t in res["tests"]:
+        flag = "" if t["matched"] else f" (S_ref unmatched, cost gap {t['cost_gap']:+.0%})"
+        print(f"{t['model']} {t['arm']} vs S_ref {t['ref']}: {t['team_acc']:.3f} vs "
+              f"{t['ref_acc']:.3f}, diff {t['diff']:+.3f} (n {t['n']}, S_ref spends "
+              f"{t['realized_cost_gap']:+.0%} here){flag}")
+    for h in ("H5a", "H5b"):
+        print(f"{h}: {res[h]['verdict']} {res[h]['per_model']}")
+    print(f"H5c: {res['H5c']['spearman']}")
+    return 0
+
+
 def cmd_sweep(a) -> int:
-    policy = make_policy(a.model)
+    policy = _policy(a)
     n_new = 0
     if a.family in ("info", "all"):
         Ts = [int(t) for t in a.T.split(",")]
@@ -145,12 +251,39 @@ def cmd_analyze(a) -> int:
         per_cell = json.loads(Path("prereg/config.json").read_text()).get(
             "sample_sizes", {}).get("per_cell") if Path("prereg/config.json").exists() else None
         min_n = int(per_cell or 0)
+    gate_detail: dict = {}
     res = write_reports(df, a.out, delta=a.delta, floors=_floors(Path(a.root)), n_boot=a.n_boot,
-                        gates=load_gates(a.root), min_n=min_n, min_models=a.min_models)
+                        gates=load_gates(a.root, df, gate_detail), min_n=min_n,
+                        min_models=a.min_models)
+    (Path(a.out) / "gates.json").write_text(json.dumps(
+        [{"model": m, "family": f, **v} for (m, f), v in sorted(gate_detail.items())], indent=2))
     for p in res["predictions"]:
         why = p.detail.get("reasons", {})
         note = "; ".join(f"{m}: {', '.join(r)}" for m, r in why.items() if r) if why else ""
         print(f"{p.prediction_id}: {p.verdict}" + (f"  ({note})" if note else ""))
+    return 0
+
+
+def cmd_power(a) -> int:
+    from ceilings.analysis.gains import runs_frame
+    from ceilings.analysis.power import sample_sizes
+    from ceilings.analysis.report import load_gates
+
+    df = runs_frame(load_runs(a.root, a.model))
+    if df.empty:
+        print("no runs")
+        return 2
+    res = sample_sizes(df, delta=a.delta, margin=a.margin, alpha=a.alpha, power=a.power,
+                       gates=load_gates(a.root, df))
+    Path(a.out).mkdir(parents=True, exist_ok=True)
+    (Path(a.out) / "power.json").write_text(json.dumps(res, indent=2, default=str))
+    for model, m in res["models"].items():
+        print(f"{model}: per-cell n for equivalence = {m['per_cell']}")
+        for r in m["rows"]:
+            print(f"  {r['family']:12s} {r['arm']:3s} vs {r['reference']:13s} {r['test']:7s} "
+                  f"pilot n={r['pilot_n']:4d} pi_d={r['pi_d']:.2f} gain={r['gain']:+.2f} "
+                  f"-> n={r['n_required']}" + ("" if r["gate_passed"] else "  (gate failed)"))
+    print(f"recommended sample_sizes.per_cell: {res['per_cell']}")
     return 0
 
 
@@ -230,6 +363,12 @@ def build_parser() -> argparse.ArgumentParser:
     def conc_opt(sp):
         sp.add_argument("--concurrency", type=int, default=1,
                         help="parallel team runs (model calls are I/O-bound)")
+        sp.add_argument("--max-requests", type=int, default=None,
+                        help="stop after this many HTTP requests (openai/ models; exit code 4)")
+        sp.add_argument("--harness", default=None,
+                        help="ablation options, e.g. probe=agent,sender=encode,"
+                             "schema=answer_first,shuffle=off,temp=0,reason=0:128:512:1024:2048 "
+                             "(use a separate --root per ablation)")
 
     g = sub.add_parser("generate", help="generate instances only")
     g.add_argument("--family", required=True)
@@ -258,6 +397,12 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--delta", default="small,medium,large", help="cost levels to match")
     pr.add_argument("--no-match", action="store_true",
                     help="skip cost matching (smoke tests only; cells are marked unmatched)")
+    pr.add_argument("--gate", choices=["two_stage", "confirm", "screen"], default="two_stage",
+                    help="calibration gate on the fresh pilot instances: two_stage (the full "
+                         "fix's lower bound >= 0.90 and the baseline within 0.05 of chance here; "
+                         "equivalence to chance on the pooled gate and main-grid baselines in "
+                         "`analyze`), confirm (equivalence on the gate runs alone; needs n-pilot "
+                         "of about 1,000+) or screen (the loose search rule)")
     pr.set_defaults(fn=cmd_prepare)
 
     r = sub.add_parser("run", help="main grid")
@@ -271,6 +416,44 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--max-cost", type=float, default=None)
     r.add_argument("--require-frozen", action="store_true")
     r.set_defaults(fn=cmd_run)
+
+    tr = sub.add_parser("team-run", help="arm design 3: agent teams (prereg/DESIGN3_PLAN.md)")
+    model_opt(tr)
+    conc_opt(tr)
+    tr.add_argument("--arms", default="S,L,W,R,W0")
+    tr.add_argument("--d", type=int, required=True, help="chain length")
+    tr.add_argument("--n", type=int, required=True, help="instances")
+    tr.add_argument("--budget", type=int, required=True,
+                    help="team cap on total tokens, checked before each turn; 0 means no cap "
+                         "(the chain-length pilot)")
+    tr.add_argument("--max-turns", type=int, default=6, help="per agent")
+    tr.add_argument("--split", default="design3")
+    tr.add_argument("--seed", type=int, default=0)
+    tr.add_argument("--max-cost", type=float, default=None)
+    tr.add_argument("--require-frozen", action="store_true")
+    tr.add_argument("--with-refs", action="store_true",
+                    help="also run each team's matched S_ref (from `team-match`)")
+    tr.set_defaults(fn=cmd_team_run)
+
+    ta = sub.add_parser("team-analyze", help="arm design 3: H5a-H5c against matched S_ref")
+    ta.add_argument("--out", default="reports/teams")
+    ta.set_defaults(fn=cmd_team_analyze)
+
+    tm = sub.add_parser("team-match", help="arm design 3: match S_ref to each team's spend")
+    model_opt(tm)
+    conc_opt(tm)
+    tm.add_argument("--arms", default="L,W,R,W0")
+    tm.add_argument("--d", type=int, required=True)
+    tm.add_argument("--n", type=int, default=20, help="matching instances")
+    tm.add_argument("--budget", type=int, required=True)
+    tm.add_argument("--max-turns", type=int, default=6)
+    tm.add_argument("--split", default="design3")
+    # Seeds come in blocks of tasks.TRIES (4,096) per instance, so this keeps the matching
+    # instances clear of a main grid of up to 2,441 instances.
+    tm.add_argument("--seed", type=int, default=10_000_000,
+                    help="first seed of the matching instances (apart from the main grid's)")
+    tm.add_argument("--max-cost", type=float, default=None)
+    tm.set_defaults(fn=cmd_team_match)
 
     s = sub.add_parser("sweep", help="H6 (tool calls) and H7 (message bits) sweeps")
     s.add_argument("--family", default="all", choices=["info", "comm", "all"])
@@ -300,6 +483,15 @@ def build_parser() -> argparse.ArgumentParser:
                             help="evaluable models that must agree (pre-registered: 2)")
         sp.set_defaults(fn=fn)
 
+    pw = sub.add_parser("power", help="per-cell sample size from pilot runs (FR-017)")
+    pw.add_argument("--model", default=None)
+    pw.add_argument("--out", default="reports")
+    pw.add_argument("--delta", default="medium")
+    pw.add_argument("--margin", type=float, default=0.05)
+    pw.add_argument("--alpha", type=float, default=0.05)
+    pw.add_argument("--power", type=float, default=0.8)
+    pw.set_defaults(fn=cmd_power)
+
     for name, fn, helptext in (("show", cmd_show, "print gain rows in a stable format"),
                                ("numbers", cmd_numbers, "write paper/numbers.json entries")):
         sp = sub.add_parser(name, help=helptext)
@@ -324,7 +516,7 @@ def main(argv: list[str] | None = None) -> int:
     except prereg.PreregHashMismatch as e:
         print(f"error: {e}", file=sys.stderr)
         return 3
-    except BudgetExceeded as e:
+    except (BudgetExceeded, RequestCapExceeded) as e:
         print(f"error: {e}", file=sys.stderr)
         return 4
 

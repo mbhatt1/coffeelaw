@@ -15,18 +15,23 @@ transcript, so each run can be audited after the fact.
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from dataclasses import dataclass, field
 
 from ceilings.adapters.base import (
     ANSWER_RULES,
+    TURN_ACTION_PROMPT,
+    TURN_REASON_PROMPT,
     AdapterResult,
     ModelAdapter,
     Usage,
     approx_tokens,
     normalize_probabilities,
 )
+from ceilings.options import DEFAULT as DEFAULT_OPTIONS
+from ceilings.options import HarnessOptions
 from ceilings.records import content_hash
 from ceilings.tasks.info import probe_text
 
@@ -79,6 +84,15 @@ class Action:
 
 class Policy:
     model_id: str
+    options: HarnessOptions = DEFAULT_OPTIONS
+
+    def harness_record(self) -> dict:
+        """The harness options in effect, resolved (stored in every run record)."""
+        return self.options.non_default() | {"resolved": {
+            "probe_policy": self.options.probe_policy, "comm_sender": self.options.comm_sender,
+            "answer_order": self.options.answer_order,
+            "shuffle_options": self.options.shuffle_options,
+            "comm_depth": self.options.comm_depth}}
 
     def choose_probe(self, view: View, depth: str, seed: int) -> Action:
         raise NotImplementedError
@@ -91,8 +105,32 @@ class Policy:
         """`AdapterResult.extra` carries the log entry under `log`."""
         raise NotImplementedError
 
+    # Arm design 3 (ceilings.teams): one turn of an agentic loop, a forced report or review, and
+    # the final answer at the end of an agent's loop. `agent` is a teams.TeamAgent.
+    def act(self, agent, depth: str, reply_tokens: int, seed: int) -> Action:
+        raise NotImplementedError
+
+    def write(self, agent, instruction: str, seed: int) -> Action:
+        raise NotImplementedError
+
+    def final_answer(self, agent, forced: bool, seed: int) -> AdapterResult:
+        raise NotImplementedError
+
     def count_tokens(self, text: str) -> int:
         return approx_tokens(text)
+
+
+def with_user(messages: list[dict], text: str) -> list[dict]:
+    """`messages` ending in a user turn that carries `text`."""
+    if messages and messages[-1]["role"] == "user":
+        return messages[:-1] + [{"role": "user",
+                                 "content": f"{messages[-1]['content']}\n\n{text}"}]
+    return messages + [{"role": "user", "content": text}]
+
+
+def final_instruction(forced: bool) -> str:
+    lead = "Your turns or the team's budget ran out. " if forced else ""
+    return f"{lead}Give your final answer to the question now. {ANSWER_RULES}"
 
 
 # --- Simulated bounded agent -------------------------------------------------------------------
@@ -135,6 +173,8 @@ class SimPolicy(Policy):
             if bits is not None and budget > 0:
                 text = (str(sum(bits) % 2) if fam == "comm_parity"
                         else "".join(str(b) for b in bits[:budget]))
+        elif mode == "quote":
+            text = view.shared_text  # facts only; the channel drops anything else
         elif fam == "reason":
             progress = self._latest_progress(view)
             _, (person, shift, done) = _reason_solve(view.public, steps, progress)
@@ -175,6 +215,60 @@ class SimPolicy(Policy):
         probs = normalize_probabilities(probs, space)
         return AdapterResult(answer, probs, None, usage, f"sim-{seed}",
                              extra={"log": {"kind": "answer", "value": answer}})
+
+    def act(self, agent, depth, reply_tokens, seed):
+        text = json.dumps(_SimTeam.action(agent))
+        return Action(text, _SimTeam.usage(agent, STEP_BUDGET[depth]),
+                      {"kind": "turn", "value": text})
+
+    def write(self, agent, instruction, seed):
+        return Action("My part is done.", _SimTeam.usage(agent, 1),
+                      {"kind": "write", "value": "My part is done."})
+
+    def final_answer(self, agent, forced, seed):
+        space = agent.answer_space
+        value, _ = _reason_solve(agent.public, STEP_BUDGET[agent.depth] * agent.turns, None)
+        guess = space[int(content_hash([agent.scenario, agent.name])[:8], 16) % len(space)]
+        answer = space[value] if value is not None else guess
+        probs = _confident(answer, space) if value is not None else _uniform(space)
+        return AdapterResult(answer, normalize_probabilities(probs, space), None,
+                             _SimTeam.usage(agent, 1), f"sim-{seed}",
+                             extra={"log": {"kind": "answer", "value": answer,
+                                            "forced": forced}})
+
+
+class _SimTeam:
+    """SimPolicy's team behaviour: each turn buys STEP_BUDGET[depth] more steps of the chain."""
+
+    @staticmethod
+    def usage(agent, steps: int) -> Usage:
+        return Usage(approx_tokens("\n".join(m["content"] for m in agent.messages)),
+                     10 * steps + 20)
+
+    @staticmethod
+    def solved(agent, turns: int) -> bool:
+        value, _ = _reason_solve(agent.public, STEP_BUDGET[agent.depth] * turns, None)
+        return value is not None
+
+    @classmethod
+    def action(cls, agent) -> dict:
+        solved = cls.solved(agent, agent.turns + 1)
+        if agent.role == "worker":
+            return ({"tool": "note", "args": {"text": "working"}} if agent.turns == 0 else
+                    {"tool": "report", "args": {"text": "My part is done."}})
+        if agent.role == "reviewer":
+            return {"tool": "review", "args": {"text": "The solution checks out."}}
+        if agent.role == "lead" and not agent.inbox:
+            return {"tool": "delegate", "args": {"briefs": ["Work out part 1.",
+                                                            "Work out part 2."]}}
+        if agent.role == "author" and not agent.inbox:
+            return ({"tool": "request_review", "args": {"solution": "My worked solution."}}
+                    if solved else {"tool": "note", "args": {"text": "working"}})
+        if solved:
+            return {"tool": "submit", "args": {}}
+        if "append_note" in agent.tools:
+            return {"tool": "append_note", "args": {"text": "still working"}}
+        return {"tool": "note", "args": {"text": "working"}}
 
 
 def _reason_solve(public, steps, progress):
@@ -228,14 +322,19 @@ SYSTEM = (
 
 
 def parse_probe(text: str, attributes: list) -> object:
-    """Map a reply to an attribute index; anything else is passed through (the tool returns ERR)."""
-    low = (text or "").strip().lower()
-    for i, (name, _, _) in enumerate(attributes):
-        if re.search(rf"\b{re.escape(name.lower())}\b", low):
-            return i
+    """Map a reply to an attribute index: the reply is an attribute name (or its index), or names
+    exactly one attribute. Anything else (prose naming several, a reply cut off mid-sentence) is
+    passed through and the tool returns ERR, so the harness never chooses for the model."""
+    low = (text or "").strip().lower().strip(" .\"'`*")
+    names = [name.lower() for name, _, _ in attributes]
+    if low in names:
+        return names.index(low)
     m = re.fullmatch(r"\s*(\d+)\s*", low)
     if m and int(m.group(1)) < len(attributes):
         return int(m.group(1))
+    named = [i for i, n in enumerate(names) if re.search(rf"\b{re.escape(n)}\b", low)]
+    if len(named) == 1:
+        return named[0]
     return (text or "").strip()[:40]
 
 
@@ -247,9 +346,21 @@ def clean_bits(text: str) -> str:
 
 
 class LLMPolicy(Policy):
-    def __init__(self, adapter: ModelAdapter) -> None:
+    def __init__(self, adapter: ModelAdapter, options: HarnessOptions = DEFAULT_OPTIONS) -> None:
         self.adapter = adapter
         self.model_id = adapter.model_id
+        self.options = options
+        adapter.configure(options)
+
+    def harness_record(self) -> dict:
+        from ceilings.adapters.base import DEPTHS
+
+        rec = super().harness_record()
+        rec["resolved"]["temperature"] = getattr(self.adapter, "temperature", None)
+        rec["resolved"]["reasoning_tokens"] = [self.adapter.reasoning_budget(d) for d in DEPTHS]
+        if getattr(self.adapter, "profile", None):
+            rec["resolved"]["provider_profile"] = self.adapter.profile
+        return rec
 
     def _messages(self, view: View, instruction: str) -> list[dict]:
         return [
@@ -259,14 +370,19 @@ class LLMPolicy(Policy):
 
     @staticmethod
     def _log(kind: str, messages: list[dict], res: AdapterResult, value) -> dict:
-        return {"kind": kind, "prompt": messages, "raw": res.text,
+        return {"kind": kind, "prompt": messages, "raw": res.text, "request_id": res.request_id,
                 "reasoning": res.extra.get("reasoning", ""),
                 "reasoning_stop": res.extra.get("reasoning_stop"), "parse": res.extra.get("parse"),
                 "stop": res.extra.get("stop"), "value": value,
                 "sent": res.extra.get("sent"),
                 "raw_prob_sum": res.extra.get("raw_prob_sum"),
                 "answer_not_argmax": res.extra.get("answer_not_argmax"),
-                "usage": [res.usage.input_tokens, res.usage.output_tokens]}
+                "hidden_reasoning": res.extra.get("hidden_reasoning"),
+                "schema_mode": res.extra.get("schema_mode"),
+                "served_by": res.extra.get("served_by"),
+                "cost": res.extra.get("reported_cost"),
+                "usage": [res.usage.input_tokens, res.usage.output_tokens,
+                          res.usage.reasoning_tokens]}
 
     def choose_probe(self, view, depth, seed):
         attrs = view.public["attributes"]
@@ -291,6 +407,13 @@ class LLMPolicy(Policy):
                 f"{length} Your entire reply must be the message characters themselves, with no "
                 "other words."
             )
+        elif mode == "quote":
+            rule = (
+                f"Write a message for agent {receiver} made only of facts copied word for word "
+                "from the task, one fact per line. Any line that is not an exact copy of a line of "
+                f"the task is removed before delivery. Use at most {budget} tokens. Reply with "
+                "only the message."
+            )
         else:
             rule = (
                 f"Write a short message for agent {receiver} that helps answer the question, for "
@@ -310,16 +433,37 @@ class LLMPolicy(Policy):
         res.extra["log"] = self._log("answer", msgs, res, res.final_answer)
         return res
 
+    def act(self, agent, depth, reply_tokens, seed):
+        res = self.adapter.complete(agent.messages, depth, None, seed, text_tokens=reply_tokens,
+                                    prompts=(TURN_REASON_PROMPT, TURN_ACTION_PROMPT))
+        text = (res.text or "").strip()
+        return Action(text, res.usage, self._log("turn", agent.messages, res, text))
+
+    def write(self, agent, instruction, seed):
+        msgs = with_user(agent.messages, instruction)
+        res = self.adapter.complete(msgs, "low", None, seed)
+        text = (res.text or "").strip()
+        return Action(text, res.usage, self._log("write", msgs, res, text))
+
+    def final_answer(self, agent, forced, seed):
+        msgs = with_user(agent.messages, final_instruction(forced))
+        res = self.adapter.complete(msgs, "low", agent.answer_space, seed)
+        res.extra["log"] = self._log("answer", msgs, res, res.final_answer)
+        return res
+
     def count_tokens(self, text: str) -> int:
         return self.adapter.count_tokens(text)
 
 
-def make_policy(model_id: str) -> Policy:
+def make_policy(model_id: str, options: HarnessOptions = DEFAULT_OPTIONS) -> Policy:
     if model_id == "sim-bounded":
-        return SimPolicy()
+        policy = SimPolicy()
+        policy.options = options
+        return policy
     from ceilings.adapters import make_adapter
 
-    return LLMPolicy(make_adapter(model_id))
+    return LLMPolicy(make_adapter(model_id), options)
 
 
-__all__ = ["View", "Action", "Policy", "SimPolicy", "LLMPolicy", "make_policy", "STEP_BUDGET"]
+__all__ = ["View", "Action", "Policy", "SimPolicy", "LLMPolicy", "make_policy", "STEP_BUDGET",
+           "with_user", "final_instruction"]

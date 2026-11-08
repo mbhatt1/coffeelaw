@@ -1,0 +1,11 @@
+model,d,n,accuracy,mean_total_tokens,forced_answer_share,logged_cost_usd
+openai/deepseek/deepseek-v4-flash,12,100,1,3336,0,0.046
+openai/deepseek/deepseek-v4-flash,18,100,0.94,5994,0,0.0796
+openai/deepseek/deepseek-v4-flash,24,100,0.99,7958,0,0.1016
+openai/mistralai/mistral-small-3.2-24b-instruct,6,100,0.35,2244,0,0.02
+openai/mistralai/mistral-small-3.2-24b-instruct,9,100,0.32,2424,0,0.022
+openai/mistralai/mistral-small-3.2-24b-instruct,12,100,0.28,3147,0,0.0293
+openai/xiaomi/mimo-v2.6-flash,12,100,0.66,5848,0.06,0.0471
+openai/z-ai/glm-4.7-flash,6,100,0.47,1956,0,0.0205
+openai/z-ai/glm-4.7-flash,9,100,0.33,2809,0,0.0292
+openai/z-ai/glm-4.7-flash,12,100,0.28,3058,0,0.0321

@@ -3,6 +3,7 @@ the checks pass, the diagonal appears, concurrency changes nothing, and the chec
 deliberate violations."""
 
 import json
+from dataclasses import replace
 
 from ceilings import arms, checks, experiment, tasks
 from ceilings.agents import LLMPolicy
@@ -33,7 +34,7 @@ def test_prompts_carry_the_information_under_the_matching_arm():
 def test_scripted_suite_passes_checks_and_shows_diagonal(tmp_path):
     policy = _policy()
     for fam in ["info", "reason", "comm_ip"]:
-        prep = experiment.prepare(fam, policy, tmp_path, n_main=40, n_pilot=12,
+        prep = experiment.prepare(fam, policy, tmp_path, n_main=40, n_pilot=12, gate="screen",
                                   difficulty=DIFF[fam], levels={"medium": 1.0}, concurrency=4)
         run_grid(experiment.main_cells(prep["main"], prep["table"], deltas=("medium",)),
                  policy, tmp_path, concurrency=4)
@@ -118,7 +119,8 @@ def test_unmatched_prepare_marks_every_cell(tmp_path):
 
 def test_no_message_calls_when_nothing_can_cross():
     inst = tasks.generate_many("comm_ip", 1, "main", n=4)[0]
-    out = run_team(inst, arms.build("A2", "comm_ip", "medium"), _policy(), 2)
+    zero = replace(arms.build("M", "comm_ip", 4), message_budget=0)  # a 0-bit channel
+    out = run_team(inst, zero, _policy(), 2)
     assert not [s for s in out.transcript if s["step"] == "message"]
 
 
@@ -128,4 +130,11 @@ def test_transcripts_record_every_turn_sent():
     call = next(s["call"] for s in out.transcript if s["step"] == "answer")
     assert len(call["sent"]) == 2  # the reasoning turn, then the final-answer turn
     assert call["sent"][0][-1]["content"].endswith("in the next turn.")
-    assert call["sent"][1][-1]["content"].endswith("in the required format.")
+    final = call["sent"][1][-1]["content"]
+    assert "in the required format." in final and "Reply with only a JSON object" in final
+
+
+def test_request_ids_cover_message_and_probe_calls():
+    inst = tasks.generate_many("comm_ip", 1, "main", n=4)[0]
+    out = run_team(inst, arms.build("M", "comm_ip", 4), _policy(), 2)
+    assert len(out.request_ids) == 5  # one message call, four answer calls

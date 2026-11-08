@@ -17,7 +17,6 @@ from ceilings.adapters.base import (
     AdapterResult,
     ModelAdapter,
     Usage,
-    answer_schema,
     normalize_probabilities,
     probability_diagnostics,
 )
@@ -49,7 +48,8 @@ class ClaudeAdapter(ModelAdapter):
         convo = [m for m in messages if m["role"] != "system"]
         output_config: dict = {"effort": depth}
         if answer_space is not None:
-            output_config["format"] = {"type": "json_schema", "schema": answer_schema(answer_space, seed)}
+            output_config["format"] = {"type": "json_schema",
+                                       "schema": self.schema_for(answer_space, seed)}
         params = {
             "model": self.model_id,
             "max_tokens": max_tokens,
@@ -94,7 +94,11 @@ class ClaudeAdapter(ModelAdapter):
         return AdapterResult(answer, probs, None, usage, request_id, text=text, valid=valid,
                              extra=extra)
 
-    def complete(self, messages, depth, answer_space, seed, max_tokens=16000):
+    def complete(self, messages, depth, answer_space, seed, max_tokens=16000, text_tokens=None,
+                 prompts=None):
+        # Native effort shares `max_tokens` between thinking and the reply, so `text_tokens` (a
+        # cap on the reply alone) has no separate setting here; nor do `prompts`, as native
+        # thinking has no separate reasoning stage.
         params = self._params(messages, depth, answer_space, max_tokens, seed)
         if max_tokens > 16000:
             with self.client.messages.stream(**params) as stream:

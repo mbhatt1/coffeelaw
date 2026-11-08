@@ -9,7 +9,7 @@ from pathlib import Path
 from ceilings import arms, calibration, tasks, theory
 from ceilings.adapters import safe_model_dir
 from ceilings.agents import Policy
-from ceilings.records import TaskInstance
+from ceilings.records import CalibrationResult, TaskInstance
 from ceilings.runner import Cell
 
 DEFAULT_DIFFICULTY = {
@@ -44,11 +44,13 @@ def prepare(
     levels: dict[str, float] | None = None,
     n_match: int | None = None,
     match: bool = True,
+    gate: str = "confirm",
 ) -> dict:
     """Generate instances, run the calibration gate and cost matching; save all three.
 
     Difficulty precedence: the explicit argument, then the model's searched setting, then the
-    default. Matching uses the first `n_match` pilot instances (all of them by default).
+    default. Matching uses the first `n_match` pilot instances (all of them by default), and is
+    skipped when the gate fails.
     """
     root = Path(root)
     diff = difficulty or chosen_difficulty(root, family, policy.model_id) or \
@@ -57,16 +59,34 @@ def prepare(
     main = tasks.generate_many(family, n_main, "main", seed0, **diff)
     tasks.save_instances(pilot, root)
     tasks.save_instances(main, root)
-    cal = calibration.calibrate(family, pilot, policy, concurrency)
-    calibration.save_json(
-        cal.model_dump(), root / "calibration" / f"{family}__{safe_model_dir(policy.model_id)}.json"
-    )
-    if match:
-        table = calibration.match_arms(family, pilot[: n_match or len(pilot)], policy, levels,
-                                       concurrency)
+    tag = f"{family}__{safe_model_dir(policy.model_id)}"
+    cal_path = root / "calibration" / f"{tag}.json"
+    previous = json.loads(cal_path.read_text()) if cal_path.exists() else None
+    if previous and previous.get("n") == len(pilot) and previous.get("difficulty") == diff \
+            and previous.get("harness") == policy.options.non_default() \
+            and previous.get("gate", "screen") == gate:
+        cal = CalibrationResult(**{k: v for k, v in previous.items()
+                                   if k not in ("difficulty", "harness", "gate")})
     else:
+        # An interrupted gate resumes from its log (runs are keyed by instance and config).
+        log = root / "calibration" / "runs" / f"{tag}.jsonl"
+        cal = calibration.calibrate(family, pilot, policy, concurrency, log_path=log, rule=gate)
+        calibration.save_json({**cal.model_dump(), "difficulty": diff, "gate": gate,
+                               "harness": policy.options.non_default()}, cal_path)
+    if match and cal.passed:
+        table = calibration.match_arms(family, pilot[: n_match or len(pilot)], policy, levels,
+                                       concurrency,
+                                       cache_path=root / "matching" / f"{tag}.json")
+    else:
+        # No matching for a family whose gate failed: it is not evaluable, so its main grid is
+        # not run and matching it would only spend requests.
         table = calibration.unmatched_table(family, policy, diff, cal.baseline_mean_tokens or 0,
                                             levels)
+        table["gate_failed"] = not cal.passed
+    # The harness options the arms were matched under: `run` refuses a mismatch, so every
+    # ablation is cost-matched under its own option (the pilot reused the default tables and
+    # probe=agent cost about 5.7x its target).
+    table["harness"] = policy.options.non_default()
     calibration.save_json(table, root / "arms" / family / f"{safe_model_dir(policy.model_id)}.json")
     return {"calibration": cal, "table": table, "main": main, "pilot": pilot, "difficulty": diff}
 
@@ -121,7 +141,7 @@ def info_sweep_cells(
             _save_sweep(insts, root)
         c = theory.bsc_capacity(p)
         for T in Ts:
-            floors[(T, p)] = theory.fano_floor(float(k), T * c, 2**k)
+            floors[(T, p)] = theory.fano_floor_strong(float(k), T * c, 2**k)
             cfg = replace(arms.build("E", "info", T), arm_id="E")
             for inst in insts:
                 cells.append(Cell(inst, cfg, None, 0, {"T": T, "flip_rate": p}))

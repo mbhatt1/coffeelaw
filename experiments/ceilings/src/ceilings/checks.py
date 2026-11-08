@@ -4,7 +4,9 @@ Three tiers:
 
 - integrity (FAIL on any violation; the run is not valid evidence): no answer leakage into
   prompts, private evidence isolated between agents, message budgets respected, each arm changes
-  exactly one resource, step counts match the arm configuration, token ledgers add up;
+  exactly one resource, step counts match the arm configuration, token ledgers add up; for the
+  design-3 teams, every agent's first prompt holds every fact, no agent sees another's reasoning
+  unless it was sent, turn, budget and text caps hold, and every run ends with its answers;
 - quality (WARN above a threshold): unparseable answers, invalid probes, invalid bit messages,
   reasoning truncated by the token cap, refusals, model substitution;
 - expectations (reported): baseline at chance, and the matching intervention of each family
@@ -17,7 +19,6 @@ from __future__ import annotations
 import json
 import re
 from collections import defaultdict
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +26,7 @@ import numpy as np
 from ceilings import arms
 from ceilings.analysis.gains import bootstrap_ci, paired_diffs, runs_frame
 from ceilings.records import TaskInstance
+from ceilings.teams import TEAM_ARMS
 
 QUALITY_THRESHOLDS = {
     "answer_parse_failed": 0.05,
@@ -36,20 +38,41 @@ QUALITY_THRESHOLDS = {
     "reasoning_truncated": 0.25,
     "refused": 0.05,
     "invalid_model": 0.0,
+    # arm design 3 teams
+    "forced_answer": 0.10,
+    "action_invalid": 0.10,
 }
 MATCHING_ARM = {"info": "E", "reason": "K", "comm_parity": "M", "comm_ip": "M"}
 ALLOWED_CHANGES = {
     "E": {"tool_rounds", "extra_kind", "extra_amount"},
-    "K": {"depth"},
-    "M": {"message_budget", "relay"},
+    # Design 1 put K's reasoning on some of the 4 samples; design 2 runs only the reasoning ones.
+    "K": {"depth", "reason_samples", "samples"},
+    "M": {"message_budget", "relay", "message_mode"},
     "A1": {"n_agents", "samples", "answerers"},
-    "A2": {"n_agents", "samples", "depth", "relay", "message_mode", "message_budget"},
+    "A2": {"n_agents", "samples", "depth", "relay", "message_mode", "message_budget",
+           "relay_skip"},
     "A2_single_ref": {"n_agents", "samples", "depth"},
     "P1": {"extra_kind"},
     "P2": {"extra_kind"},
     "baseline": set(),
 }
-IGNORED_FIELDS = {"arm_id", "strength", "filler_tokens"}
+# Harness-wide settings (ceilings.options), not resources an arm may change.
+IGNORED_FIELDS = {"arm_id", "strength", "filler_tokens", "probe_policy", "comm_sender"}
+
+
+def _baseline_for(t: dict, fam: str) -> dict:
+    """The baseline config this run is compared with: the default baseline after the run's own
+    harness options (e.g. a comm_depth reasoning floor applies to the baseline too)."""
+    from types import SimpleNamespace
+
+    from ceilings.options import HarnessOptions
+    from ceilings.orchestrator import effective_config
+
+    given = {k: v for k, v in (t.get("harness") or {}).items() if k != "resolved"}
+    if "reasoning_tokens" in given and given["reasoning_tokens"] is not None:
+        given["reasoning_tokens"] = tuple(given["reasoning_tokens"])
+    policy = SimpleNamespace(options=HarnessOptions(**given))
+    return effective_config(arms.baseline(fam), policy, fam).to_dict()
 
 
 def load_instances_index(root: Path | str) -> dict[str, TaskInstance]:
@@ -79,9 +102,9 @@ def _check_transcript(t: dict, inst: TaskInstance | None, problems: dict, rates:
     key = (t["model_id"], fam, cfg["arm_id"])
 
     # Each arm changes exactly one resource relative to baseline.
-    base = asdict(arms.baseline(fam))
-    base["answerers"] = list(base["answerers"])
-    changed = {k for k in base if base[k] != cfg.get(k)} - IGNORED_FIELDS
+    base = _baseline_for(t, fam)
+    # A field missing from an older transcript had its default value.
+    changed = {k for k in base if base[k] != cfg.get(k, base[k])} - IGNORED_FIELDS
     if t.get("sweep") is None and not changed <= ALLOWED_CHANGES.get(cfg["arm_id"], set()):
         problems["arm_changes_one_resource"].append(f"{rid[:12]} {cfg['arm_id']}: {sorted(changed)}")
 
@@ -152,6 +175,91 @@ def _check_transcript(t: dict, inst: TaskInstance | None, problems: dict, rates:
                     problems["private_isolation"].append(f"{rid[:12]} agent {agent} saw {other}")
 
 
+def _team_calls(step: dict) -> list[dict]:
+    return step.get("calls") or ([step["call"]] if step.get("call") else [])
+
+
+def _check_team_transcript(t: dict, inst: TaskInstance | None, problems: dict,
+                           rates: dict) -> None:
+    """Arm design 3 (ceilings.teams): every agent holds every fact, no agent sees another's
+    reasoning unless that agent chose to send it, caps hold, and every run ends with answers."""
+    rid, cfg, steps = t["run_id"], t["config"], t["steps"]
+    key = (t["model_id"], t["family"], cfg["arm_id"])
+    if inst is None:
+        problems["instance_available"].append(f"{rid[:12]}: instance {t['instance_id'][:12]}")
+    else:
+        facts = [ln for ln in inst.shared_evidence.splitlines() if ln.strip()]
+        for s in steps:
+            if s["step"] == "start":
+                text = _prompt_text({"prompt": s["prompt"]})
+                missing = sum(ln not in text for ln in facts)
+                if missing:
+                    problems["facts_in_every_prompt"].append(
+                        f"{rid[:12]} agent {s['agent']}: {missing} of {len(facts)} lines missing")
+    # Reasoning an agent sent on (in a brief, report, note, solution or review), or that only
+    # repeats the task or what the agent was itself shown (a peer copying the shared notes into its
+    # reasoning, as a GLM swarm peer did in the design-3 main run), may appear in another agent's
+    # prompt; any other reasoning may not. Only what the harness gives an agent (its user turns)
+    # can carry another's reasoning; its own replies may match another agent's words without
+    # anything being leaked.
+    def shown(call: dict) -> str:
+        return "\n".join(m["content"] for m in call.get("prompt") or [] if m["role"] == "user")
+
+    shared = "\n".join(s["text"] for s in steps if s["step"] == "deliver")
+    if inst is not None:
+        shared += f"\n{inst.scenario}\n{inst.shared_evidence}"
+    reasoning: dict[str, list[str]] = defaultdict(list)
+    for s in steps:
+        for call in _team_calls(s):
+            r = (call.get("reasoning") or "").strip()
+            if len(r) >= 40 and r not in shared and r not in shown(call):
+                reasoning[s["agent"]].append(r)
+    for s in steps:
+        for call in _team_calls(s):
+            text = shown(call)
+            for other, rs in reasoning.items():
+                if other != s["agent"] and any(r in text for r in rs):
+                    problems["reasoning_hidden"].append(f"{rid[:12]} {s['agent']} saw {other}")
+                    break
+    turns: dict[str, int] = defaultdict(int)
+    for s in steps:
+        if s["step"] == "turn":
+            turns[s["agent"]] = max(turns[s["agent"]], s["turn"])
+            if s["budget_left"] is not None and s["budget_left"] <= 0:
+                problems["team_caps"].append(f"{rid[:12]}: {s['agent']} took a turn over budget")
+            rates["action_invalid"][key].append(s["action"] is None)
+            for call in s["calls"]:
+                if call.get("reasoning"):
+                    rates["reasoning_truncated"][key].append(call.get("reasoning_stop") == "length")
+        if s["step"] == "deliver" and s["tokens"] > s["cap"]:
+            problems["team_caps"].append(f"{rid[:12]}: {s['kind']} of {s['tokens']} tokens")
+    over = [a for a, n in turns.items() if n > cfg["max_turns"]]
+    if over:
+        problems["team_caps"].append(f"{rid[:12]}: {over} over {cfg['max_turns']} turns")
+    answers = [s for s in steps if s["step"] == "answer"]
+    if cfg["arm_id"] in ("W", "W0"):
+        expected = cfg["peers"]
+    else:
+        from ceilings.teams import TeamConfig, attempts
+        expected = attempts(TeamConfig(**cfg), t["instance_id"])
+    if len(answers) != expected:
+        problems["step_counts"].append(f"{rid[:12]}: {len(answers)} answers, expected {expected}")
+    for s in answers:
+        call = s.get("call") or {}
+        rates["answer_parse_failed"][key].append(s["answer"] is None and not s["refusal"])
+        rates["answer_parse_text_fallback"][key].append(call.get("parse") == "text")
+        rates["refused"][key].append(bool(s["refusal"]))
+        rates["invalid_model"][key].append(not s.get("valid", True))
+    rates["forced_answer"][key].append(any(s["forced"] for s in answers))
+    if cfg["arm_id"] == "L":
+        reports = sum(s["step"] == "deliver" and s["kind"] == "report" for s in steps)
+        briefs = sum(s["step"] == "deliver" and s["kind"] == "brief" for s in steps)
+        if briefs > cfg["max_workers"] or (answers and not answers[0]["forced"]
+                                           and reports < cfg["min_workers"]):
+            problems["lead_used_workers"].append(f"{rid[:12]}: {briefs} briefs, {reports} "
+                                                 "reports")
+
+
 def _rate_table(rates: dict) -> dict:
     out = {}
     for name, by_key in rates.items():
@@ -167,7 +275,7 @@ def _rate_table(rates: dict) -> dict:
     return out
 
 
-def _expectations(records: list[dict], delta: str) -> dict:
+def _expectations(records: list[dict], delta: str, index: dict | None = None) -> dict:
     df = runs_frame(records)
     out = {"baseline_at_chance": [], "matching_arm_helps": []}
     if df.empty:
@@ -177,7 +285,10 @@ def _expectations(records: list[dict], delta: str) -> dict:
         base = g[g["arm"] == "baseline"]
         if base.empty:
             continue
-        chance = 1 / len(base["probabilities"].iloc[0])
+        from ceilings.tasks import chance as instance_chance
+
+        known = [instance_chance(index[i]) for i in base["instance_id"] if index and i in index]
+        chance = float(np.mean(known)) if known else 1 / len(base["probabilities"].iloc[0])
         acc = float(base["correct"].mean())
         se = float(np.sqrt(chance * (1 - chance) / len(base)))
         if 1.96 * se > 0.10:
@@ -204,7 +315,9 @@ def run_checks(root: Path | str, records: list[dict], delta: str = "medium") -> 
     problems: dict[str, list] = {k: [] for k in ("no_answer_leak", "private_isolation",
                                                  "message_budget", "arm_changes_one_resource",
                                                  "step_counts", "ledger_totals",
-                                                 "instance_available")}
+                                                 "instance_available", "facts_in_every_prompt",
+                                                 "reasoning_hidden", "team_caps",
+                                                 "lead_used_workers")}
     rates: dict = {k: defaultdict(list) for k in QUALITY_THRESHOLDS}
     n_transcripts = 0
     for r in records:
@@ -215,12 +328,14 @@ def run_checks(root: Path | str, records: list[dict], delta: str = "medium") -> 
         ref = r.get("transcript_ref")
         if ref and Path(ref).exists():
             t = json.loads(Path(ref).read_text())
-            _check_transcript(t, index.get(r["instance_id"]), problems, rates)
+            check = _check_team_transcript if t["config"]["arm_id"] in TEAM_ARMS \
+                else _check_transcript
+            check(t, index.get(r["instance_id"]), problems, rates)
             n_transcripts += 1
     integrity = {k: {"status": "PASS" if not v else "FAIL", "n_violations": len(v),
                      "examples": v[:5]} for k, v in problems.items()}
     quality = _rate_table(rates)
-    expectations = _expectations(records, delta)
+    expectations = _expectations(records, delta, index)
     passed = all(v["status"] == "PASS" for v in integrity.values())
     return {"passed": passed, "n_records": len(records), "n_transcripts": n_transcripts,
             "integrity": integrity, "quality": quality, "expectations": expectations}

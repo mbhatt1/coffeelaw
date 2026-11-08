@@ -13,9 +13,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-ArmId = Literal["baseline", "E", "K", "M", "A1", "A2", "A2_single_ref", "P1", "P2", "E+K", "M+K"]
+ArmId = Literal["baseline", "E", "K", "M", "A1", "A2", "A2_single_ref", "P1", "P2", "E+K", "M+K",
+                "S", "L", "W", "R", "W0", "S_ref"]  # the last six: arm design 3 (ceilings.teams)
 DeltaLevel = Literal["small", "medium", "large"]
-Split = Literal["calibration", "main", "heldout_blind"]
+Split = Literal["calibration", "main", "heldout_blind", "design3"]
 
 
 def content_hash(obj: Any) -> str:
@@ -152,14 +153,18 @@ class RunRecord(_Frozen):
     model_id: str
     replicate: int = Field(ge=0)
     sweep: Sweep | None = None
+    harness: dict | None = None  # harness options in effect (ceilings.options), resolved
+    arm_design: int = 1  # ceilings.arms.ARM_DESIGN when the run was made (records without it: 1)
     prereg_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     final_answer: str | None
     probabilities: dict[str, float]
     sample_answers: list[str | None] = []
     correct: bool
+    p_true: float | None = None  # the team's probability on the true answer
     valid: bool = True
     refusal: Refusal | None
     ledger: ResourceLedger
+    team: dict | None = None  # arm design 3 teams: turns, workers, forced answers, budget
     transcript_ref: str
     provider_request_ids: list[str]
     started_at: datetime

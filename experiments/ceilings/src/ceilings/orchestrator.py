@@ -12,16 +12,17 @@ reply, so `ceilings check` and human reviewers can verify what each agent saw an
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 
 from ceilings.agents import Policy, View
-from ceilings.arms import ArmConfig, extra_text
+from ceilings.arms import DEPTH_ORDER, ArmConfig, base_depth, extra_text
 from ceilings.channel import Channel
 from ceilings.ledger import Ledger
 from ceilings.records import TaskInstance
 from ceilings.tasks import evidence_for_arm_e
+from ceilings.tasks.comm import without_ready_message
 from ceilings.tools import ToolSimulator
 
 AGENT_NAMES = ["A", "B", "C", "D", "E", "F", "G", "H"]
@@ -37,10 +38,13 @@ class TeamOutcome:
     ledger: Ledger
     transcript: list[dict] = field(default_factory=list)
     request_ids: list[str] = field(default_factory=list)
+    team: dict | None = None  # arm design 3 summary (ceilings.teams)
 
 
 def _view(instance: TaskInstance, name: str, cfg: ArmConfig, answerer: bool) -> View:
     private_text = instance.private_evidence.get(name, "")
+    if cfg.comm_sender == "encode" and instance.family_id.startswith("comm_"):
+        private_text = without_ready_message(private_text)
     extra = ""
     if answerer and name == cfg.answerers[0]:
         evidence = (
@@ -62,7 +66,22 @@ def _view(instance: TaskInstance, name: str, cfg: ArmConfig, answerer: bool) -> 
     )
 
 
+def effective_config(cfg: ArmConfig, policy: Policy, family_id: str) -> ArmConfig:
+    """The arm config after the team-level harness options (ceilings.options) are applied: the
+    one actually run, and the one transcripts record."""
+    team_opts = {k: v for k, v in policy.options.non_default().items()
+                 if k in ("probe_policy", "comm_sender")}
+    if team_opts:
+        cfg = replace(cfg, **team_opts)
+    floor = policy.options.comm_depth
+    if floor and family_id.startswith("comm_") \
+            and DEPTH_ORDER.index(cfg.depth) < DEPTH_ORDER.index(floor):
+        cfg = replace(cfg, depth=floor)
+    return cfg
+
+
 def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) -> TeamOutcome:
+    cfg = effective_config(cfg, policy, instance.family_id)
     rng = np.random.default_rng(seed)
     ledger = Ledger()
     transcript: list[dict] = []
@@ -93,6 +112,8 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
             if cfg.probe_policy == "agent":
                 action = policy.choose_probe(views[prober], cfg.depth, call_seed())
                 charge(prober, action.usage)
+                if action.log.get("request_id"):
+                    request_ids.append(action.log["request_id"])
                 query, log = action.value, action.log
             else:
                 query, log = t % instance.payload["public"]["k"], None
@@ -106,8 +127,10 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
     # A bit budget of 0 means nothing can cross, so no message calls are made (and none charged).
     can_send = cfg.message_budget > 0 or (cfg.relay and cfg.message_mode == "tokens")
     if can_send and len(names) > 1:
-        channel = Channel(cfg.message_mode, cfg.message_budget, ledger, policy.count_tokens)
-        chain = list(reversed(names))  # D -> C -> B -> A when relaying; B -> A with two agents
+        channel = Channel(cfg.message_mode, cfg.message_budget, ledger, policy.count_tokens,
+                          quotable=instance.shared_evidence.splitlines())
+        # D -> C -> B -> A when relaying (D -> C -> A without B on comm); B -> A with two agents
+        chain = [n for n in reversed(names) if n not in cfg.relay_skip]
         senders = chain[:-1] if cfg.relay else [n for n in names if n not in cfg.answerers]
         for i, sender in enumerate(senders):
             receiver = chain[i + 1] if cfg.relay else cfg.answerers[0]
@@ -117,6 +140,8 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
                 action = policy.compose(views[sender], receiver, cfg.depth, cfg.message_mode,
                                         cfg.message_budget, retry, call_seed())
                 charge(sender, action.usage)
+                if action.log.get("request_id"):
+                    request_ids.append(action.log["request_id"])
                 calls.append(action.log)
                 return action.value
 
@@ -132,9 +157,14 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
 
     # (4) Answers.
     results = []
+    other_depth = base_depth(instance.family_id)
+    if DEPTH_ORDER.index(other_depth) > DEPTH_ORDER.index(cfg.depth):
+        other_depth = cfg.depth
     for name in cfg.answerers:
-        for _ in range(cfg.samples):
-            res = policy.answer(views[name], cfg.depth, call_seed())
+        for j in range(cfg.samples):
+            depth = (cfg.depth if cfg.reason_samples is None or j < cfg.reason_samples
+                     else other_depth)
+            res = policy.answer(views[name], depth, call_seed())
             charge(name, res.usage)
             request_ids.append(res.request_id)
             results.append(res)
@@ -142,17 +172,25 @@ def run_team(instance: TaskInstance, cfg: ArmConfig, policy: Policy, seed: int) 
                                "probabilities": res.probabilities, "refusal": res.refusal,
                                "valid": res.valid, "call": res.extra.get("log")})
 
-    space = instance.answer_space
+    final, mean = aggregate(results, instance.answer_space, rng)
+    refusal = next((r.refusal for r in results if r.refusal), None)
+    return TeamOutcome(final, mean, [r.final_answer for r in results], refusal,
+                       all(r.valid for r in results), ledger, transcript, request_ids)
+
+
+def aggregate(results: list, space: list[str], rng) -> tuple[str | None, dict[str, float]]:
+    """Majority vote over the answers (ties broken by mean probability, then by `rng`) and the
+    normalised mean probability."""
     mean = {a: float(np.mean([r.probabilities.get(a, 0.0) for r in results])) for a in space}
     total = sum(mean.values()) or 1.0
     mean = {a: v / total for a, v in mean.items()}
     votes = Counter(r.final_answer for r in results if r.final_answer is not None)
-    if votes:
-        top = max(votes.values())
-        tied = [a for a, c in votes.items() if c == top]
-        final = max(tied, key=lambda a: mean[a])
-    else:
-        final = None
-    refusal = next((r.refusal for r in results if r.refusal), None)
-    return TeamOutcome(final, mean, [r.final_answer for r in results], refusal,
-                       all(r.valid for r in results), ledger, transcript, request_ids)
+    if not votes:
+        return None, mean
+    top = max(votes.values())
+    tied = [a for a, c in votes.items() if c == top]
+    best = max(mean[a] for a in tied)
+    # A tie that the mean probability does not break is broken with the run's own seed, not
+    # by the order the answers came in.
+    tied = sorted(a for a in tied if mean[a] >= best - 1e-12)
+    return (tied[int(rng.integers(len(tied)))] if len(tied) > 1 else tied[0]), mean

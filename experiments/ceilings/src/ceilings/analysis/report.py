@@ -160,11 +160,14 @@ def _combine(per_model: dict[str, str], min_models: int) -> str:
 
 
 def fano_verdict(df: pd.DataFrame, floors: dict, gates: dict | None = None,
-                 min_power_p: float = ALPHA) -> tuple[str, list]:
+                 min_power_p: float = ALPHA, min_models: int = 2) -> tuple[str, list]:
     """H6: in each (T, p) cell with a positive floor, is the error significantly below it?
 
     A cell counts only if it could reject at all: with zero errors its p-value must be below
-    `min_power_p`. Without any such cell the verdict is inconclusive, not supported.
+    `min_power_p`. Each model is judged on its own cells (Holm within the model): contradicted if
+    any powered cell is significantly below the floor, supported if none is, inconclusive without
+    a powered cell, not evaluable if its info gate failed. Models are then combined like H1-H5
+    (`min_models` evaluable models must agree).
     """
     cells = []
     if "T" not in df.columns:
@@ -178,18 +181,26 @@ def fano_verdict(df: pd.DataFrame, floors: dict, gates: dict | None = None,
                       "floor": floor, "powered": floor > 0 and best_p < min_power_p,
                       "p_below": float(stats.binomtest(errors, n, floor, alternative="less")
                                        .pvalue) if floor > 0 else None})
-    tested = [c for c in cells if c["powered"]]
-    for c, a in zip(tested, holm([c["p_below"] for c in tested]), strict=True):
-        c["p_adj"] = a
-    models = {c["model"] for c in cells}
-    if gates and models and all(gates.get((m, "info")) is False for m in models):
-        return NOT_EVALUABLE, cells
-    if any(c["p_adj"] < ALPHA for c in tested):
-        return "contradicted", cells
-    return ("supported" if tested else "inconclusive"), cells
+    per_model = {}
+    for model in sorted({c["model"] for c in cells}):
+        tested = [c for c in cells if c["model"] == model and c["powered"]]
+        for c, a in zip(tested, holm([c["p_below"] for c in tested]), strict=True):
+            c["p_adj"] = a
+        if gates and gates.get((model, "info")) is False:
+            per_model[model] = NOT_EVALUABLE
+        elif any(c["p_adj"] < ALPHA for c in tested):
+            per_model[model] = "contradicted"
+        else:
+            per_model[model] = "supported" if tested else "inconclusive"
+    for c in cells:
+        c["model_verdict"] = per_model[c["model"]]
+    if not per_model:
+        return "inconclusive", cells
+    return _combine(per_model, min_models), cells
 
 
-def threshold_verdict(df: pd.DataFrame, gates: dict | None = None) -> tuple[str, dict]:
+def threshold_verdict(df: pd.DataFrame, gates: dict | None = None,
+                      min_models: int = 2) -> tuple[str, dict]:
     """H7 from the bit-mode message sweeps.
 
     Supported: for inner product, the threshold model beats the linear one on held-out instances
@@ -252,7 +263,7 @@ def threshold_verdict(df: pd.DataFrame, gates: dict | None = None) -> tuple[str,
     detail["per_model"] = per_model
     if not per_model:
         return "inconclusive", detail
-    return _combine(per_model, 1), detail
+    return _combine(per_model, min_models), detail
 
 
 def assign_verdicts(
@@ -287,16 +298,21 @@ def assign_verdicts(
             verdict=verdict,
             detail={"per_model": per_h[hid], "reasons": reasons[hid], "min_n": min_n,
                     "min_models": min_models}))
-    v6, cells = fano_verdict(df, floors or {}, gates)
+    v6, cells = fano_verdict(df, floors or {}, gates, min_models=min_models)
+    per6 = {c["model"]: c["model_verdict"] for c in cells}
     why6 = (["calibration gate failed for info for every model with sweep runs"]
             if v6 == NOT_EVALUABLE else
             ["no cell with a positive floor and enough runs to reject"]
-            if v6 == "inconclusive" and not any(c.get("powered") for c in cells) else [])
+            if v6 == "inconclusive" and not any(c.get("powered") for c in cells) else
+            [f"fewer than {min_models} evaluable models agree: {per6}"]
+            if v6 == "inconclusive" else [])
     preds.append(Prediction(prediction_id="H6", statement=STATEMENTS["H6"][0],
                             paper_source=STATEMENTS["H6"][1],
                             test="binomial floor check on powered cells, Holm",
-                            verdict=v6, detail={"cells": cells, "reasons": {"all": why6}}))
-    v7, detail = threshold_verdict(df, gates)
+                            verdict=v6, detail={"cells": cells, "per_model": per6,
+                                                "reasons": {"all": why6},
+                                                "min_models": min_models}))
+    v7, detail = threshold_verdict(df, gates, min_models=min_models)
     detail["reasons"] = {f"{m}/{f}": ["calibration gate failed"]
                          for (m, f), ok in gates.items()
                          if f in ("comm_ip", "comm_parity") and ok is False}
@@ -307,13 +323,66 @@ def assign_verdicts(
     return preds, all_rows
 
 
-def load_gates(root: Path | str) -> dict:
-    """(model, family) -> calibration gate result, from `<root>/calibration/*.json`."""
+def load_gates(root: Path | str, df: pd.DataFrame | None = None,
+               detail: dict | None = None) -> dict:
+    """(model, family) -> calibration gate result, from `<root>/calibration/*.json`; a family
+    whose difficulty search (`<root>/difficulty/*.json`) found no passing setting, and was
+    therefore never prepared, counts as a failed gate.
+
+    A "two_stage" gate passes only if stage 2 does too: the baseline equivalent to chance
+    (`calibration.baseline_equivalent`) on the gate's baseline runs pooled with the main grid's
+    baseline runs in `df`. Without `df` it is not yet decided and counts as failed. `detail`, if
+    given, is filled with each gate's numbers."""
+    from ceilings.calibration import baseline_equivalent
+
     gates = {}
+    for path in Path(root).glob("difficulty/*.json"):
+        if path.name.endswith(".settings.json"):
+            continue
+        d = json.loads(path.read_text())
+        if d.get("chosen") is None:
+            gates[(d["model_id"], d["family"])] = False
+            if detail is not None:
+                detail[(d["model_id"], d["family"])] = {"gate": "search", "passed": False}
     for path in Path(root).glob("calibration/*.json"):
         d = json.loads(path.read_text())
-        gates[(d["model_id"], d["family_id"])] = bool(d["passed"])
+        key = (d["model_id"], d["family_id"])
+        passed = bool(d["passed"])
+        info = {"gate": d.get("gate", "screen"), "stage1_passed": passed, "n_gate": d["n"],
+                "baseline_acc": d["baseline_acc"], "chance": d["chance_acc"],
+                "full_acc": d["matched_full_acc"]}
+        if d.get("gate") == "two_stage":
+            correct, n = _pooled_baseline(root, path.stem, df, key, d.get("difficulty"))
+            stage2 = n > 0 and baseline_equivalent(correct, n, d["chance_acc"])
+            info.update(pooled_correct=correct, pooled_n=n, stage2_passed=bool(stage2))
+            passed = passed and bool(stage2)
+        gates[key] = passed
+        if detail is not None:
+            detail[key] = {**info, "passed": passed}
     return gates
+
+
+def _pooled_baseline(root, stem: str, df: pd.DataFrame | None, key,
+                     difficulty: dict | None = None) -> tuple[int, int]:
+    """Correct count and n over the gate's baseline runs and the main grid's (one per instance).
+    A re-gate at another difficulty appends to the same log, so only rows at the gate's
+    `difficulty` count (a row may carry more keys, such as comm's variant)."""
+    runs = Path(root) / "calibration" / "runs" / f"{stem}.jsonl"
+    seen: dict[str, bool] = {}
+    if runs.exists():
+        for line in runs.read_text().splitlines():
+            r = json.loads(line)
+            if r["config"]["arm_id"] != "baseline":
+                continue
+            row_d = r.get("difficulty") or {}
+            if difficulty is None or all(row_d.get(k) == v for k, v in difficulty.items()):
+                seen.setdefault("gate:" + r["instance_id"], bool(r["correct"]))
+    if df is not None and not df.empty:
+        main = df[(df.model == key[0]) & (df.family == key[1]) & (df.arm == "baseline")
+                  & ~df.is_sweep]
+        for iid, c in main.groupby("instance_id").correct.first().items():
+            seen.setdefault("main:" + iid, bool(c))
+    return sum(seen.values()), len(seen)
 
 
 def write_reports(
